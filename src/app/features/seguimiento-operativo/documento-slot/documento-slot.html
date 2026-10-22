@@ -1,0 +1,44 @@
+<section class="slot" [class.completo]="!vacio()" [class.arrastrando]="arrastrando()"
+         (dragover)="sobre($event, true)" (dragleave)="sobre($event, false)" (drop)="soltar($event)">
+  <header>
+    <div class="icono"><app-icon [name]="icono()" [size]="20" /></div>
+    <div class="titulo">
+      <h3>{{ etiqueta() }}</h3>
+      <small>{{ ayuda() }}</small>
+    </div>
+    @if (!vacio() && unico()) {
+      <span class="estado ok"><app-icon name="check" [size]="13" /> Cargado</span>
+    } @else if (vacio() && unico()) {
+      <span class="estado pendiente">Pendiente</span>
+    } @else if (!unico()) {
+      <span class="estado">{{ documentos().length }}</span>
+    }
+  </header>
+
+  @for (d of documentos(); track d.id) {
+    <div class="archivo">
+      <app-icon name="file" [size]="16" />
+      <div class="info">
+        <a [href]="urlVer(d)" target="_blank" rel="noopener" class="nombre" [title]="d.nombre_original">{{ d.nombre_original }}</a>
+        <small>{{ d.tamano | tamano }} · subido {{ d.created_at | fechaLarga: false }}</small>
+      </div>
+      <a class="btn-icono" [href]="urlVer(d)" target="_blank" rel="noopener" title="Ver"><app-icon name="eye" [size]="16" /></a>
+      <a class="btn-icono" [href]="urlDescargar(d)" title="Descargar"><app-icon name="download" [size]="16" /></a>
+      <button type="button" class="btn-icono peligro" (click)="eliminar(d)" title="Eliminar"><app-icon name="trash" [size]="16" /></button>
+    </div>
+  }
+
+  @if (progreso() !== null) {
+    <div class="progreso"><div [style.width.%]="progreso()"></div></div>
+  } @else {
+    <label class="zona">
+      <input type="file" [multiple]="!unico()" (change)="seleccionar($event)" hidden
+             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.zip,.rar,.txt,.csv" />
+      <app-icon name="upload" [size]="16" />
+      @if (unico() && !vacio()) { Reemplazar archivo } @else if (unico()) { Subir archivo } @else { Agregar archivos }
+      <small>o arrastre aquí · máx. 50 MB</small>
+    </label>
+  }
+
+  @if (error()) { <div class="error">{{ error() }}</div> }
+</section>

@@ -1,0 +1,64 @@
+<aside class="sidebar" [class.abierto]="menuMovil()">
+  <div class="marca">
+    <div class="logo">G</div>
+    <div>
+      <strong>Gobernanza</strong>
+      <small>Control de reuniones</small>
+    </div>
+  </div>
+
+  <nav>
+    @for (seccion of menu; track seccion.titulo) {
+      <div class="seccion">{{ seccion.titulo }}</div>
+      @for (item of seccion.items; track item.etiqueta) {
+        @if (item.hijos) {
+          <button type="button" class="item" (click)="alternar(item)" [attr.aria-expanded]="abiertos().has(item.etiqueta)">
+            <app-icon [name]="item.icono" />
+            <span>{{ item.etiqueta }}</span>
+            <app-icon name="chevron" [size]="14" class="flecha" [class.girada]="abiertos().has(item.etiqueta)" />
+          </button>
+          @if (abiertos().has(item.etiqueta)) {
+            <div class="hijos">
+              @for (hijo of item.hijos; track hijo.etiqueta) {
+                <a class="item hijo" [routerLink]="hijo.ruta" routerLinkActive="activo"
+                   [routerLinkActiveOptions]="{ exact: true }">
+                  <app-icon [name]="hijo.icono" [size]="16" />
+                  <span>{{ hijo.etiqueta }}</span>
+                </a>
+              }
+            </div>
+          }
+        } @else if (item.proximamente) {
+          <span class="item deshabilitado" title="Disponible próximamente">
+            <app-icon [name]="item.icono" />
+            <span>{{ item.etiqueta }}</span>
+            <em>Pronto</em>
+          </span>
+        } @else {
+          <a class="item" [routerLink]="item.ruta" routerLinkActive="activo">
+            <app-icon [name]="item.icono" />
+            <span>{{ item.etiqueta }}</span>
+          </a>
+        }
+      }
+    }
+  </nav>
+
+  <div class="pie">Supervisión de Desarrollo</div>
+</aside>
+
+@if (menuMovil()) {
+  <div class="velo" (click)="menuMovil.set(false)"></div>
+}
+
+<div class="contenido">
+  <header class="topbar">
+    <button type="button" class="btn-icono hamburguesa" (click)="menuMovil.set(true)" aria-label="Abrir menú">
+      <app-icon name="menu" />
+    </button>
+    <span class="titulo">Sistema de Control de Reuniones de Gobernanza</span>
+  </header>
+  <main>
+    <router-outlet />
+  </main>
+</div>

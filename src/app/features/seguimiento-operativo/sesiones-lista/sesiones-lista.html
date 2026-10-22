@@ -1,0 +1,191 @@
+<div class="page-header">
+  <div>
+    <div class="migas">Gobernanza › Seguimiento Operativo</div>
+    <h1>Sesiones de Seguimiento Operativo</h1>
+    @if (tipo(); as t) {
+      <p>Reunión {{ t.periodicidad }} · {{ t.base_legal }}</p>
+    }
+  </div>
+  <div class="acciones">
+    <a class="btn primario" routerLink="/seguimiento-operativo/sesiones/nueva">
+      <app-icon name="plus" [size]="16" /> Nueva sesión
+    </a>
+  </div>
+</div>
+
+@if (resumen(); as r) {
+  <div class="grid-stats">
+    <div class="card stat">
+      <div class="etiqueta">Sesiones {{ anioActivo() ?? 'registradas' }}</div>
+      <div class="valor">{{ r.total }}</div>
+      <div class="detalle">{{ r.por_estado.realizada ?? 0 }} realizadas · {{ r.por_estado.suspendida ?? 0 }} suspendidas</div>
+    </div>
+    <div class="card stat">
+      <div class="etiqueta">Última sesión</div>
+      <div class="valor">{{ r.ultima ? 'N° ' + r.ultima.numero : '—' }}</div>
+      <div class="detalle">{{ r.ultima?.fecha | fechaLarga }}</div>
+    </div>
+    <button type="button" class="card stat stat-clic" (click)="verPendientes('sin_acta')">
+      <div class="etiqueta">Realizadas sin acta</div>
+      <div class="valor" [class.alerta]="r.realizadas_sin_acta > 0">{{ r.realizadas_sin_acta }}</div>
+      <div class="detalle">Ver sesiones pendientes de acta</div>
+    </button>
+    <button type="button" class="card stat stat-clic" (click)="verPendientes('incompleta')">
+      <div class="etiqueta">Documentación incompleta</div>
+      <div class="valor" [class.alerta]="r.realizadas_incompletas > 0">{{ r.realizadas_incompletas }}</div>
+      <div class="detalle">Ver las que les falta acta, asistencia o presentación</div>
+    </button>
+  </div>
+}
+
+<!-- Pestañas por año -->
+<div class="tabs" role="tablist">
+  <button type="button" role="tab" [class.activo]="anioActivo() === null" (click)="seleccionarAnio(null)">
+    Todos
+  </button>
+  @for (a of anios(); track a.anio) {
+    <button type="button" role="tab" [class.activo]="anioActivo() === a.anio" (click)="seleccionarAnio(a.anio)"
+            [title]="'Sesiones N° ' + a.desde + ' a N° ' + a.hasta">
+      {{ a.anio }}
+      <span class="contador">{{ a.total }}</span>
+    </button>
+  }
+</div>
+
+<div class="card panel">
+  <!-- Filtros -->
+  <form class="filtros" [formGroup]="form">
+    <div class="fila-principal">
+      <div class="buscador">
+        <app-icon name="search" [size]="16" />
+        <input formControlName="buscar" placeholder="Buscar en agenda, acuerdos, lugar o nombre de documento…" />
+      </div>
+      <button type="button" class="btn" (click)="mostrarFiltros.set(!mostrarFiltros())">
+        <app-icon name="filter" [size]="16" /> Filtros
+        @if (filtrosActivos()) { <span class="contador">{{ filtrosActivos() }}</span> }
+      </button>
+      @if (filtrosActivos()) {
+        <button type="button" class="btn" (click)="limpiar()"><app-icon name="x" [size]="16" /> Limpiar</button>
+      }
+    </div>
+
+    @if (mostrarFiltros()) {
+      <div class="grid-filtros">
+        <div class="campo">
+          <label for="f-numero">N° de sesión</label>
+          <input id="f-numero" type="number" min="1" formControlName="numero" placeholder="Ej. 72" />
+        </div>
+        <div class="campo">
+          <label for="f-mes">Mes</label>
+          <select id="f-mes" formControlName="mes">
+            <option value="">Todos</option>
+            @for (m of meses; track m; let i = $index) { <option [value]="i + 1">{{ m }}</option> }
+          </select>
+        </div>
+        <div class="campo">
+          <label for="f-desde">Fecha desde</label>
+          <input id="f-desde" type="date" formControlName="fecha_desde" />
+        </div>
+        <div class="campo">
+          <label for="f-hasta">Fecha hasta</label>
+          <input id="f-hasta" type="date" formControlName="fecha_hasta" />
+        </div>
+        <div class="campo">
+          <label for="f-estado">Estado</label>
+          <select id="f-estado" formControlName="estado">
+            <option value="">Todos</option>
+            @for (e of estados; track e.valor) { <option [value]="e.valor">{{ e.etiqueta }}</option> }
+          </select>
+        </div>
+        <div class="campo">
+          <label for="f-modalidad">Modalidad</label>
+          <select id="f-modalidad" formControlName="modalidad">
+            <option value="">Todas</option>
+            @for (m of modalidades; track m.valor) { <option [value]="m.valor">{{ m.etiqueta }}</option> }
+          </select>
+        </div>
+        <div class="campo">
+          <label for="f-doc">Documentación</label>
+          <select id="f-doc" formControlName="documentacion">
+            <option value="">Cualquiera</option>
+            @for (d of documentacion; track d.valor) { <option [value]="d.valor">{{ d.etiqueta }}</option> }
+          </select>
+        </div>
+      </div>
+    }
+  </form>
+
+  @if (error()) {
+    <div class="alerta-error">{{ error() }}</div>
+  }
+
+  <!-- Tabla -->
+  <div class="tabla-wrap" [class.cargando]="cargando()">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th><button type="button" class="orden" (click)="ordenarPor('numero')">N° sesión {{ icono('numero') }}</button></th>
+          <th><button type="button" class="orden" (click)="ordenarPor('fecha')">Fecha {{ icono('fecha') }}</button></th>
+          <th>Horario</th>
+          <th>Modalidad / lugar</th>
+          <th>Estado</th>
+          <th>Documentos</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (s of pagina()?.data ?? []; track s.id) {
+          <tr class="clic" (click)="abrir(s)">
+            <td><strong class="numero">Sesión N° {{ s.numero }}</strong></td>
+            <td class="nowrap">{{ s.fecha | fechaLarga }}</td>
+            <td class="nowrap muted">
+              @if (s.hora_inicio) { {{ s.hora_inicio | hora }}@if (s.hora_fin) { – {{ s.hora_fin | hora }} } } @else { — }
+            </td>
+            <td>
+              <div class="capitalizar">{{ s.modalidad }}</div>
+              <div class="muted pequeno">{{ s.lugar || '—' }}</div>
+            </td>
+            <td><span class="badge" [class]="s.estado">{{ s.estado }}</span></td>
+            <td>
+              <div class="docs">
+                <span class="doc" [class.ok]="s.acta_count" title="Acta">Acta</span>
+                <span class="doc" [class.ok]="s.asistencia_count" title="Lista de asistencia">Asist.</span>
+                <span class="doc" [class.ok]="s.presentacion_count" title="Presentación">Pres.</span>
+                @if (s.adjuntos_count) {
+                  <span class="doc ok" title="Adjuntos adicionales"><app-icon name="clip" [size]="12" /> {{ s.adjuntos_count }}</span>
+                }
+              </div>
+            </td>
+            <td class="acciones-fila" (click)="$event.stopPropagation()">
+              <a class="btn-icono" [routerLink]="['/seguimiento-operativo/sesiones', s.id]" title="Ver detalle y documentos">
+                <app-icon name="eye" [size]="16" />
+              </a>
+              <a class="btn-icono" [routerLink]="['/seguimiento-operativo/sesiones', s.id, 'editar']" title="Editar">
+                <app-icon name="edit" [size]="16" />
+              </a>
+            </td>
+          </tr>
+        } @empty {
+          @if (!cargando()) {
+            <tr><td colspan="7" class="vacio">No se encontraron sesiones con los filtros seleccionados.</td></tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (pagina(); as p) {
+    @if (p.total > 0) {
+      <div class="paginacion">
+        <span class="muted">Mostrando {{ p.from }}–{{ p.to }} de {{ p.total }} sesiones</span>
+        <div class="paginas">
+          <button type="button" class="btn sm" [disabled]="p.current_page === 1" (click)="irAPagina(p.current_page - 1)">‹</button>
+          @for (n of paginas(); track n) {
+            <button type="button" class="btn sm" [class.primario]="n === p.current_page" (click)="irAPagina(n)">{{ n }}</button>
+          }
+          <button type="button" class="btn sm" [disabled]="p.current_page === p.last_page" (click)="irAPagina(p.current_page + 1)">›</button>
+        </div>
+      </div>
+    }
+  }
+</div>

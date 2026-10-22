@@ -1,0 +1,90 @@
+<div class="page-header">
+  <div>
+    <div class="migas"><a routerLink="/seguimiento-operativo/sesiones">Seguimiento Operativo</a> › {{ editando ? 'Editar sesión' : 'Nueva sesión' }}</div>
+    <h1>{{ editando ? 'Editar sesión N° ' + form.controls.numero.value : 'Registrar nueva sesión' }}</h1>
+    <p>Los documentos (acta, asistencia, presentación y adjuntos) se cargan en el detalle de la sesión.</p>
+  </div>
+</div>
+
+@if (errorGeneral()) { <div class="alerta-error">{{ errorGeneral() }}</div> }
+
+<form class="card formulario" [formGroup]="form" (ngSubmit)="guardar()">
+  <fieldset>
+    <legend>Identificación</legend>
+    <div class="grid">
+      @if (tipos().length > 1) {
+        <div class="campo ancho-2">
+          <label for="tipo">Tipo de reunión</label>
+          <select id="tipo" formControlName="tipo_reunion_id" (change)="cambiarTipo()">
+            @for (t of tipos(); track t.id) { <option [ngValue]="t.id">{{ t.nombre }}</option> }
+          </select>
+        </div>
+      }
+      <div class="campo">
+        <label for="numero">N° de sesión *</label>
+        <input id="numero" type="number" min="1" formControlName="numero" [class.invalido]="error('numero')" />
+        @if (error('numero'); as e) { <span class="error">{{ e }}</span> }
+        @else if (!editando) { <span class="ayuda">Sugerido: correlativo siguiente</span> }
+      </div>
+      <div class="campo">
+        <label for="fecha">Fecha *</label>
+        <input id="fecha" type="date" formControlName="fecha" [class.invalido]="error('fecha')" />
+        @if (error('fecha'); as e) { <span class="error">{{ e }}</span> }
+      </div>
+      <div class="campo">
+        <label for="estado">Estado *</label>
+        <select id="estado" formControlName="estado">
+          @for (e of estados; track e.valor) { <option [value]="e.valor">{{ e.etiqueta }}</option> }
+        </select>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Horario y lugar</legend>
+    <div class="grid">
+      <div class="campo">
+        <label for="hi">Hora de inicio</label>
+        <input id="hi" type="time" formControlName="hora_inicio" />
+      </div>
+      <div class="campo">
+        <label for="hf">Hora de fin</label>
+        <input id="hf" type="time" formControlName="hora_fin" [class.invalido]="error('hora_fin')" />
+        @if (error('hora_fin'); as e) { <span class="error">{{ e }}</span> }
+      </div>
+      <div class="campo">
+        <label for="modalidad">Modalidad *</label>
+        <select id="modalidad" formControlName="modalidad">
+          @for (m of modalidades; track m.valor) { <option [value]="m.valor">{{ m.etiqueta }}</option> }
+        </select>
+      </div>
+      <div class="campo ancho-3">
+        <label for="lugar">Lugar o enlace</label>
+        <input id="lugar" formControlName="lugar" placeholder="Ej. Sala de reuniones de Gerencia / enlace de Teams" />
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Contenido</legend>
+    <div class="campo">
+      <label for="agenda">Agenda</label>
+      <textarea id="agenda" rows="4" formControlName="agenda" placeholder="Puntos a tratar en la sesión"></textarea>
+    </div>
+    <div class="campo">
+      <label for="acuerdos">Acuerdos</label>
+      <textarea id="acuerdos" rows="4" formControlName="acuerdos" placeholder="Acuerdos y compromisos adoptados"></textarea>
+    </div>
+    <div class="campo">
+      <label for="obs">Observaciones</label>
+      <textarea id="obs" rows="3" formControlName="observaciones" placeholder="Ej. motivo de suspensión o reprogramación"></textarea>
+    </div>
+  </fieldset>
+
+  <div class="botones">
+    <a class="btn" [routerLink]="editando ? ['/seguimiento-operativo/sesiones', id()] : ['/seguimiento-operativo/sesiones']">Cancelar</a>
+    <button type="submit" class="btn primario" [disabled]="guardando()">
+      <app-icon name="check" [size]="16" /> {{ guardando() ? 'Guardando…' : (editando ? 'Guardar cambios' : 'Registrar sesión') }}
+    </button>
+  </div>
+</form>

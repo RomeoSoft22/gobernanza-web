@@ -1,0 +1,45 @@
+.formulario { max-width: 900px; padding: 0; }
+
+fieldset {
+  border: 0;
+  border-bottom: 1px solid var(--borde);
+  margin: 0;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+legend {
+  float: left;
+  width: 100%;
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--primario);
+  margin-bottom: 4px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.ancho-2 { grid-column: span 2; }
+.ancho-3 { grid-column: 1 / -1; }
+
+.botones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 22px;
+  background: #f8fafc;
+  border-radius: 0 0 var(--radio) var(--radio);
+}
+
+@media (max-width: 700px) {
+  .grid { grid-template-columns: 1fr; }
+  .ancho-2 { grid-column: auto; }
+}

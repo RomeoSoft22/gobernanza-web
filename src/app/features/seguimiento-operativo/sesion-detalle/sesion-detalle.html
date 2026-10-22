@@ -1,0 +1,69 @@
+@if (error()) {
+  <div class="alerta-error">{{ error() }}</div>
+  <a class="btn" routerLink="/seguimiento-operativo/sesiones"><app-icon name="back" [size]="16" /> Volver al listado</a>
+}
+
+@if (sesion(); as s) {
+  <div class="page-header">
+    <div>
+      <div class="migas">
+        <a routerLink="/seguimiento-operativo/sesiones">Seguimiento Operativo</a> ›
+        <a routerLink="/seguimiento-operativo/sesiones" [queryParams]="{ anio: s.anio }">{{ s.anio }}</a> ›
+        Sesión N° {{ s.numero }}
+      </div>
+      <h1>Sesión N° {{ s.numero }} <span class="badge" [class]="s.estado">{{ s.estado }}</span></h1>
+      <p>{{ s.tipo_reunion?.nombre }} · {{ s.tipo_reunion?.base_legal }}</p>
+    </div>
+    <div class="acciones">
+      <a class="btn" routerLink="/seguimiento-operativo/sesiones" [queryParams]="{ anio: s.anio }">
+        <app-icon name="back" [size]="16" /> Volver
+      </a>
+      <a class="btn" [routerLink]="['/seguimiento-operativo/sesiones', s.id, 'editar']">
+        <app-icon name="edit" [size]="16" /> Editar
+      </a>
+      <button type="button" class="btn peligro" (click)="eliminar()"><app-icon name="trash" [size]="16" /> Eliminar</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <aside class="card datos">
+      <h2>Datos de la sesión</h2>
+      <dl>
+        <dt>Fecha</dt><dd>{{ s.fecha | fechaLarga }}</dd>
+        <dt>Horario</dt>
+        <dd>@if (s.hora_inicio) { {{ s.hora_inicio | hora }}@if (s.hora_fin) { – {{ s.hora_fin | hora }} } } @else { — }</dd>
+        <dt>Modalidad</dt><dd class="cap">{{ s.modalidad }}</dd>
+        <dt>Lugar / enlace</dt><dd>{{ s.lugar || '—' }}</dd>
+      </dl>
+
+      <div class="avance">
+        <div class="avance-texto"><span>Documentación obligatoria</span><strong>{{ avance() }}/3</strong></div>
+        <div class="barra"><div [style.width.%]="avance() / 3 * 100" [class.completa]="avance() === 3"></div></div>
+      </div>
+
+      @if (s.agenda) {
+        <h3>Agenda</h3>
+        <p class="texto">{{ s.agenda }}</p>
+      }
+      @if (s.acuerdos) {
+        <h3>Acuerdos</h3>
+        <p class="texto">{{ s.acuerdos }}</p>
+      }
+      @if (s.observaciones) {
+        <h3>Observaciones</h3>
+        <p class="texto">{{ s.observaciones }}</p>
+      }
+    </aside>
+
+    <section>
+      <h2 class="titulo-docs">Documentos de la sesión</h2>
+      <div class="grid-docs">
+        @for (t of tipos; track t.valor) {
+          <app-documento-slot [class.ancho]="!t.unico"
+            [sesionId]="s.id" [tipo]="t.valor" [etiqueta]="t.etiqueta" [ayuda]="t.ayuda"
+            [unico]="t.unico" [documentos]="docsDe(t.valor)" (cambio)="recargar()" />
+        }
+      </div>
+    </section>
+  </div>
+}
