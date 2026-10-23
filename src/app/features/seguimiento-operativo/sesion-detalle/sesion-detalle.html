@@ -1,67 +1,106 @@
 @if (error()) {
   <div class="alerta-error">{{ error() }}</div>
-  <a class="btn" routerLink="/seguimiento-operativo/sesiones"><app-icon name="back" [size]="16" /> Volver al listado</a>
+  <a class="btn" [routerLink]="base()"><app-icon name="back" [size]="16" /> Volver al listado</a>
 }
 
 @if (sesion(); as s) {
   <div class="page-header">
     <div>
       <div class="migas">
-        <a routerLink="/seguimiento-operativo/sesiones">Seguimiento Operativo</a> ›
-        <a routerLink="/seguimiento-operativo/sesiones" [queryParams]="{ anio: s.anio }">{{ s.anio }}</a> ›
+        <a [routerLink]="base()">{{ s.tipo_reunion?.nombre }}</a> ›
+        <a [routerLink]="base()" [queryParams]="{ anio: s.anio, clase: s.clase }">{{ s.anio }} · <span class="cap">{{ s.clase }}s</span></a> ›
         Sesión N° {{ s.numero }}
       </div>
-      <h1>Sesión N° {{ s.numero }} <span class="badge" [class]="s.estado">{{ s.estado }}</span></h1>
+      <h1>
+        Sesión N° {{ s.numero }}
+        <span class="clase" [class.extra]="s.clase === 'extraordinaria'">{{ s.clase }}</span>
+        <span class="badge" [class]="s.estado">{{ s.estado }}</span>
+      </h1>
       <p>{{ s.tipo_reunion?.nombre }} · {{ s.tipo_reunion?.base_legal }}</p>
     </div>
     <div class="acciones">
-      <a class="btn" routerLink="/seguimiento-operativo/sesiones" [queryParams]="{ anio: s.anio }">
+      <a class="btn" [routerLink]="base()" [queryParams]="{ anio: s.anio }">
         <app-icon name="back" [size]="16" /> Volver
       </a>
-      <a class="btn" [routerLink]="['/seguimiento-operativo/sesiones', s.id, 'editar']">
+      <a class="btn" [routerLink]="[base(), s.id, 'editar']">
         <app-icon name="edit" [size]="16" /> Editar
       </a>
       <button type="button" class="btn peligro" (click)="eliminar()"><app-icon name="trash" [size]="16" /> Eliminar</button>
     </div>
   </div>
 
-  <div class="layout">
-    <aside class="card datos">
-      <h2>Datos de la sesión</h2>
-      <dl>
-        <dt>Fecha</dt><dd>{{ s.fecha | fechaLarga }}</dd>
-        <dt>Horario</dt>
-        <dd>@if (s.hora_inicio) { {{ s.hora_inicio | hora }}@if (s.hora_fin) { – {{ s.hora_fin | hora }} } } @else { — }</dd>
-        <dt>Modalidad</dt><dd class="cap">{{ s.modalidad }}</dd>
-        <dt>Lugar / enlace</dt><dd>{{ s.lugar || '—' }}</dd>
-      </dl>
+  @if (driveMensaje()) {
+    <div class="alerta-ok"><app-icon name="check" [size]="16" /> {{ driveMensaje() }}</div>
+  }
 
-      <div class="avance">
-        <div class="avance-texto"><span>Documentación obligatoria</span><strong>{{ avance() }}/3</strong></div>
-        <div class="barra"><div [style.width.%]="avance() / 3 * 100" [class.completa]="avance() === 3"></div></div>
+  <div class="layout">
+    <aside class="lateral">
+      <div class="card datos">
+        <h2>Datos de la sesión</h2>
+        <dl>
+          <dt>Fecha</dt><dd>{{ s.fecha | fechaLarga }}</dd>
+          <dt>Horario</dt>
+          <dd>@if (s.hora_inicio) { {{ s.hora_inicio | hora }}@if (s.hora_fin) { – {{ s.hora_fin | hora }} } } @else { — }</dd>
+          <dt>Modalidad</dt><dd class="cap">{{ s.modalidad }}</dd>
+          <dt>Lugar / enlace</dt><dd>{{ s.lugar || '—' }}</dd>
+        </dl>
+
+        <div class="avance">
+          <div class="avance-texto"><span>Documentación obligatoria</span><strong>{{ avance() }}/3</strong></div>
+          <div class="barra"><div [style.width.%]="avance() / 3 * 100" [class.completa]="avance() === 3"></div></div>
+        </div>
+
+        @if (s.agenda) {
+          <h3>Agenda</h3>
+          <p class="texto">{{ s.agenda }}</p>
+        }
+        @if (s.acuerdos) {
+          <h3>Acuerdos</h3>
+          <p class="texto">{{ s.acuerdos }}</p>
+        }
+        @if (s.observaciones) {
+          <h3>Observaciones</h3>
+          <p class="texto">{{ s.observaciones }}</p>
+        }
       </div>
 
-      @if (s.agenda) {
-        <h3>Agenda</h3>
-        <p class="texto">{{ s.agenda }}</p>
-      }
-      @if (s.acuerdos) {
-        <h3>Acuerdos</h3>
-        <p class="texto">{{ s.acuerdos }}</p>
-      }
-      @if (s.observaciones) {
-        <h3>Observaciones</h3>
-        <p class="texto">{{ s.observaciones }}</p>
-      }
+      <div class="card drive">
+        <h2><app-icon name="cloud" [size]="18" /> Google Drive</h2>
+        @if (s.drive_folder_url) {
+          <p class="muted">Los documentos se leen directamente de la carpeta de la sesión.
+            @if (s.drive_sincronizado_at) { Última lectura: {{ s.drive_sincronizado_at | fechaLarga: false }}. }
+          </p>
+          <div class="botones-drive">
+            <a class="btn sm" [href]="s.drive_folder_url" target="_blank" rel="noopener">
+              <app-icon name="external" [size]="14" /> Abrir carpeta
+            </a>
+            <button type="button" class="btn sm primario" (click)="leerDrive(false, true)" [disabled]="leyendoDrive()">
+              <app-icon name="refresh" [size]="14" /> {{ leyendoDrive() ? 'Leyendo…' : 'Actualizar' }}
+            </button>
+          </div>
+        } @else {
+          <p class="muted">La sesión aún no tiene carpeta en Drive. Se buscará la carpeta
+            <em>"{{ s.fecha.split('-').join('.') }} - {{ s.numero }}va Reunión@if (s.clase === 'extraordinaria') { Extraordinaria}"</em> en el año {{ s.anio }}; si no existe, se crea.</p>
+          <button type="button" class="btn sm primario" (click)="leerDrive(true, true)" [disabled]="leyendoDrive()">
+            <app-icon name="refresh" [size]="14" /> {{ leyendoDrive() ? 'Vinculando…' : 'Vincular con Drive' }}
+          </button>
+        }
+        @if (driveError()) { <p class="error">{{ driveError() }}</p> }
+      </div>
     </aside>
 
     <section>
-      <h2 class="titulo-docs">Documentos de la sesión</h2>
-      <div class="grid-docs">
+      <div class="titulo-docs">
+        <h2>Documentos de la sesión</h2>
+        @if (leyendoDrive()) {
+          <span class="leyendo"><span class="giro"><app-icon name="refresh" [size]="14" /></span> Leyendo Google Drive…</span>
+        }
+      </div>
+      <div class="grid-docs" [class.atenuado]="leyendoDrive()">
         @for (t of tipos; track t.valor) {
-          <app-documento-slot [class.ancho]="!t.unico"
+          <app-documento-slot [class.ancho]="!t.requerido"
             [sesionId]="s.id" [tipo]="t.valor" [etiqueta]="t.etiqueta" [ayuda]="t.ayuda"
-            [unico]="t.unico" [documentos]="docsDe(t.valor)" (cambio)="recargar()" />
+            [requerido]="t.requerido" [documentos]="docsDe(t.valor)" (cambio)="recargar()" />
         }
       </div>
     </section>

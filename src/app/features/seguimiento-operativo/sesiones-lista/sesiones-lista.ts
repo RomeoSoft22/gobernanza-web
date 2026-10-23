@@ -2,11 +2,13 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signa
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Params, Router, RouterLink } from '@angular/router';
-import { debounceTime, distinctUntilChanged, map, switchMap, tap, catchError, of } from 'rxjs';
+import { catchError, combineLatest, debounceTime, distinctUntilChanged, filter, map, of, switchMap, tap } from 'rxjs';
 import {
-  AnioSesiones, DOCUMENTACION, ESTADOS, FiltrosSesion, MESES, MODALIDADES, Paginado, Resumen, Sesion,
+  AnioSesiones, CLASES, Clase, DOCUMENTACION, ESTADOS, FiltrosSesion, MESES, MODALIDADES, Paginado, Resumen, Sesion,
+  TipoReunion,
 } from '../../../core/models/sesion.model';
 import { SesionesService } from '../../../core/services/sesiones.service';
+import { mensajeError } from '../../../shared/errores';
 import { Icon } from '../../../shared/icon/icon';
 import { FechaLargaPipe, HoraPipe } from '../../../shared/pipes';
 
@@ -30,14 +32,17 @@ export class SesionesLista {
   protected readonly modalidades = MODALIDADES;
   protected readonly documentacion = DOCUMENTACION;
   protected readonly meses = MESES;
+  protected readonly clases = CLASES;
 
-  protected tipos = toSignal(this.api.tiposReunion(), { initialValue: [] });
-  protected tipo = computed(() => this.tipos()[0] ?? null);
+  protected tipo = signal<TipoReunion | null>(null);
   protected anios = signal<AnioSesiones[]>([]);
   protected resumen = signal<Resumen | null>(null);
   protected pagina = signal<Paginado<Sesion> | null>(null);
   protected cargando = signal(true);
   protected error = signal<string | null>(null);
+  protected aviso = signal<string | null>(null);
+  protected creandoAnio = signal(false);
+
   /** Panel de filtros avanzados: cerrado por defecto, abierto si llegan filtros en la URL. */
   protected mostrarFiltros = signal(
     CAMPOS_FILTRO.some(c => c !== 'buscar' && !!this.route.snapshot.queryParamMap.get(c)),
@@ -54,6 +59,7 @@ export class SesionesLista {
   });
 
   protected anioActivo = computed(() => this.filtros().anio ?? null);
+  protected claseActiva = computed(() => this.filtros().clase ?? null);
   protected filtrosActivos = computed(() => CAMPOS_FILTRO.filter(c => !!(this.filtros() as any)[c]).length);
   protected paginas = computed(() => {
     const p = this.pagina();
@@ -64,21 +70,29 @@ export class SesionesLista {
   });
 
   constructor() {
-    this.api.anios().subscribe(a => this.anios.set(a));
+    const tipo$ = this.route.paramMap.pipe(
+      switchMap(p => this.api.tipoPorSlug(p.get('reunion') ?? '')),
+      tap(t => {
+        this.tipo.set(t ?? null);
+        if (!t) this.error.set('La reunión solicitada no existe.');
+      }),
+      filter((t): t is TipoReunion => !!t),
+      distinctUntilChanged((a, b) => a.id === b.id),
+      tap(t => this.cargarAnios(t.id)),
+    );
 
-    this.route.queryParamMap.pipe(
-      map(q => this.leerFiltros(q)),
-      tap(f => {
+    combineLatest([tipo$, this.route.queryParamMap.pipe(map(q => this.leerFiltros(q)))]).pipe(
+      tap(([t, f]) => {
         this.form.patchValue(
           Object.fromEntries(CAMPOS_FILTRO.map(c => [c, (f as any)[c] ?? ''])),
           { emitEvent: false },
         );
         this.cargando.set(true);
         this.error.set(null);
-        this.api.resumen({ anio: f.anio }).subscribe(r => this.resumen.set(r));
+        this.api.resumen({ tipo_reunion_id: t.id, anio: f.anio, clase: f.clase }).subscribe(r => this.resumen.set(r));
       }),
-      switchMap(f => this.api.listar(f).pipe(catchError(() => {
-        this.error.set('No se pudo conectar con el servidor. Verifique que la API esté en ejecución.');
+      switchMap(([t, f]) => this.api.listar({ ...f, tipo_reunion_id: t.id }).pipe(catchError(err => {
+        this.error.set(mensajeError(err));
         return of(null);
       }))),
       takeUntilDestroyed(),
@@ -95,26 +109,53 @@ export class SesionesLista {
     ).subscribe(() => this.navegar({ ...this.form.getRawValue(), page: null }));
   }
 
+  protected base() {
+    return `/reuniones/${this.tipo()?.slug ?? ''}/sesiones`;
+  }
+
   protected seleccionarAnio(anio: number | null) {
     this.navegar({ anio, page: null, fecha_desde: null, fecha_hasta: null, mes: null });
   }
 
+  protected seleccionarClase(clase: Clase | null) {
+    this.navegar({ clase, page: null, numero: null });
+  }
+
+  /** Crea el año: en Drive se generan las carpetas de ordinarias y extraordinarias. */
+  protected nuevoAnio() {
+    const t = this.tipo();
+    if (!t) return;
+    const sugerido = Math.max(new Date().getFullYear(), ...this.anios().map(a => a.anio + 1));
+    const valor = prompt(`Año a crear para ${t.nombre}.\nSe crearán sus carpetas de reuniones ordinarias y extraordinarias en Google Drive.`, String(sugerido));
+    const anio = Number(valor);
+    if (!valor || !Number.isInteger(anio) || anio < 2000 || anio > 2100) return;
+
+    this.creandoAnio.set(true);
+    this.aviso.set(null);
+    this.api.crearAnio(t.id, anio).subscribe({
+      next: carpetas => {
+        this.creandoAnio.set(false);
+        this.aviso.set(`Año ${anio} creado en Drive (${Object.keys(carpetas).map(c => c + 's').join(' y ')}).`);
+        this.cargarAnios(t.id);
+        this.seleccionarAnio(anio);
+      },
+      error: err => {
+        this.creandoAnio.set(false);
+        this.error.set(mensajeError(err, 'No se pudo crear el año.'));
+      },
+    });
+  }
+
   protected ordenarPor(campo: 'numero' | 'fecha') {
     const f = this.filtros();
-    const direccion = (f.orden ?? 'numero') === campo && (f.direccion ?? 'desc') === 'desc' ? 'asc' : 'desc';
+    const direccion = (f.orden ?? 'fecha') === campo && (f.direccion ?? 'desc') === 'desc' ? 'asc' : 'desc';
     this.navegar({ orden: campo, direccion });
   }
 
   protected icono(campo: string) {
     const f = this.filtros();
-    if ((f.orden ?? 'numero') !== campo) return '';
+    if ((f.orden ?? 'fecha') !== campo) return '';
     return (f.direccion ?? 'desc') === 'desc' ? '↓' : '↑';
-  }
-
-  /** Atajo desde los indicadores: lista las sesiones realizadas con documentación pendiente. */
-  protected verPendientes(documentacion: 'sin_acta' | 'incompleta') {
-    this.mostrarFiltros.set(true);
-    this.navegar({ estado: 'realizada', documentacion, page: null });
   }
 
   protected irAPagina(page: number) {
@@ -125,12 +166,18 @@ export class SesionesLista {
     this.navegar(Object.fromEntries(CAMPOS_FILTRO.map(c => [c, null])));
   }
 
-  protected abrir(s: Sesion) {
-    this.router.navigate(['/seguimiento-operativo/sesiones', s.id]);
+  /** Atajo desde los indicadores: lista las sesiones realizadas con documentación pendiente. */
+  protected verPendientes(documentacion: 'sin_acta' | 'incompleta') {
+    this.mostrarFiltros.set(true);
+    this.navegar({ estado: 'realizada', documentacion, page: null });
   }
 
-  protected documentosCompletos(s: Sesion) {
-    return !!(s.acta_count && s.asistencia_count && s.presentacion_count);
+  protected abrir(s: Sesion) {
+    this.router.navigate([this.base(), s.id]);
+  }
+
+  private cargarAnios(tipoId: number) {
+    this.api.anios(tipoId).subscribe(a => this.anios.set(a));
   }
 
   private navegar(cambios: Params) {
@@ -143,6 +190,7 @@ export class SesionesLista {
   private leerFiltros(q: { get(k: string): string | null }): FiltrosSesion {
     const num = (k: string) => (q.get(k) ? Number(q.get(k)) : null);
     return {
+      clase: (q.get('clase') as Clase) ?? null,
       anio: num('anio'),
       numero: num('numero'),
       mes: num('mes'),
@@ -152,7 +200,7 @@ export class SesionesLista {
       modalidad: (q.get('modalidad') as FiltrosSesion['modalidad']) ?? null,
       documentacion: q.get('documentacion'),
       buscar: q.get('buscar'),
-      orden: q.get('orden') ?? 'numero',
+      orden: q.get('orden') ?? 'fecha',
       direccion: (q.get('direccion') as 'asc' | 'desc') ?? 'desc',
       page: num('page') ?? 1,
       por_pagina: 15,

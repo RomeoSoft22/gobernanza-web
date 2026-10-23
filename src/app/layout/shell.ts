@@ -14,7 +14,7 @@ import { Icon } from '../shared/icon/icon';
 export class Shell {
   private router = inject(Router);
   protected menu = MENU;
-  protected abiertos = signal<Set<string>>(new Set(['Seguimiento Operativo']));
+  protected abiertos = signal<Set<string>>(new Set(['Seguimiento Operativo', 'Seguimiento Táctico']));
   protected menuMovil = signal(false);
 
   constructor() {

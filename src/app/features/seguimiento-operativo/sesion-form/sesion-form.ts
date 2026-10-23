@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject, input, signal, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, input, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
-import { ESTADOS, MODALIDADES, SesionPayload, TipoReunion } from '../../../core/models/sesion.model';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { CLASES, Clase, ESTADOS, MODALIDADES, SesionPayload, TipoReunion } from '../../../core/models/sesion.model';
 import { SesionesService } from '../../../core/services/sesiones.service';
+import { mensajeError } from '../../../shared/errores';
 import { Icon } from '../../../shared/icon/icon';
 
 @Component({
@@ -15,20 +16,24 @@ import { Icon } from '../../../shared/icon/icon';
 export class SesionForm implements OnInit {
   private api = inject(SesionesService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
 
-  /** :id cuando se edita; ausente al crear. */
+  /** Slug de la reunión (:reunion) y, al editar, el :id de la sesión. */
+  reunion = input.required<string>();
   id = input<string>();
 
   protected readonly estados = ESTADOS;
   protected readonly modalidades = MODALIDADES;
-  protected tipos = signal<TipoReunion[]>([]);
+  protected readonly clases = CLASES;
+  protected tipo = signal<TipoReunion | null>(null);
   protected guardando = signal(false);
   protected erroresServidor = signal<Record<string, string[]>>({});
   protected errorGeneral = signal<string | null>(null);
 
   protected form = this.fb.nonNullable.group({
     tipo_reunion_id: [0, Validators.required],
+    clase: ['ordinaria' as Clase, Validators.required],
     numero: [0, [Validators.required, Validators.min(1)]],
     fecha: [new Date().toISOString().substring(0, 10), Validators.required],
     hora_inicio: [''],
@@ -45,14 +50,22 @@ export class SesionForm implements OnInit {
     return !!this.id();
   }
 
+  protected base() {
+    return `/reuniones/${this.reunion()}/sesiones`;
+  }
+
   ngOnInit() {
-    this.api.tiposReunion().subscribe(tipos => {
-      this.tipos.set(tipos);
+    this.api.tipoPorSlug(this.reunion()).subscribe(tipo => {
+      if (!tipo) {
+        this.errorGeneral.set('La reunión solicitada no existe.');
+        return;
+      }
+      this.tipo.set(tipo);
       if (this.editando) return;
-      const tipo = tipos[0];
-      if (!tipo) return;
-      this.form.patchValue({ tipo_reunion_id: tipo.id });
-      this.sugerirNumero(tipo.id);
+
+      const clase = this.route.snapshot.queryParamMap.get('clase') as Clase | null;
+      this.form.patchValue({ tipo_reunion_id: tipo.id, clase: clase === 'extraordinaria' ? clase : 'ordinaria' });
+      this.sugerirNumero();
     });
 
     if (this.editando) {
@@ -65,8 +78,8 @@ export class SesionForm implements OnInit {
     }
   }
 
-  protected cambiarTipo() {
-    if (!this.editando) this.sugerirNumero(this.form.controls.tipo_reunion_id.value);
+  protected cambiarClase() {
+    if (!this.editando) this.sugerirNumero();
   }
 
   protected error(campo: string): string | null {
@@ -84,11 +97,10 @@ export class SesionForm implements OnInit {
     const v = this.form.getRawValue();
     const payload = {
       ...v,
-      tipo_reunion_id: Number(v.tipo_reunion_id),
       numero: Number(v.numero),
       hora_inicio: v.hora_inicio || null,
       hora_fin: v.hora_fin || null,
-    } as unknown as SesionPayload;
+    } as SesionPayload;
 
     this.guardando.set(true);
     this.erroresServidor.set({});
@@ -99,16 +111,27 @@ export class SesionForm implements OnInit {
       : this.api.crear(payload);
 
     peticion.subscribe({
-      next: s => this.router.navigate(['/seguimiento-operativo/sesiones', s.id]),
+      next: s => {
+        if (s.aviso_drive) alert(s.aviso_drive);
+        this.router.navigate([this.base(), s.id]);
+      },
       error: err => {
         this.guardando.set(false);
-        if (err.status === 422) this.erroresServidor.set(err.error.errors ?? {});
-        else this.errorGeneral.set('No se pudo guardar la sesión. Intente nuevamente.');
+        if (err.status === 422 && err.error?.errors) this.erroresServidor.set(err.error.errors);
+        else this.errorGeneral.set(mensajeError(err, 'No se pudo guardar la sesión. Intente nuevamente.'));
       },
     });
   }
 
-  private sugerirNumero(tipoId: number) {
-    this.api.siguienteNumero(tipoId).subscribe(r => this.form.patchValue({ numero: r.numero }));
+  /** Las extraordinarias reinician su numeración cada año: al cambiar la fecha se recalcula. */
+  protected cambiarFecha() {
+    if (!this.editando && this.form.controls.clase.value === 'extraordinaria') this.sugerirNumero();
+  }
+
+  private sugerirNumero() {
+    const { tipo_reunion_id, clase, fecha } = this.form.getRawValue();
+    if (!tipo_reunion_id) return;
+    const anio = Number(fecha?.substring(0, 4)) || new Date().getFullYear();
+    this.api.siguienteNumero(tipo_reunion_id, clase, anio).subscribe(r => this.form.patchValue({ numero: r.numero }));
   }
 }

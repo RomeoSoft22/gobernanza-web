@@ -13,30 +13,39 @@ export const routes: Routes = [
         loadComponent: () => import('./features/inicio/inicio').then(m => m.Inicio),
       },
       {
-        path: 'seguimiento-operativo',
+        // :reunion = slug de tipos_reunion (operativo, tactico)
+        path: 'reuniones/:reunion',
         children: [
           { path: '', pathMatch: 'full', redirectTo: 'sesiones' },
           {
             path: 'sesiones',
-            title: 'Sesiones | Seguimiento Operativo',
+            title: 'Sesiones | Gobernanza',
             loadComponent: () => import('./features/seguimiento-operativo/sesiones-lista/sesiones-lista').then(m => m.SesionesLista),
           },
           {
             path: 'sesiones/nueva',
-            title: 'Nueva sesión | Seguimiento Operativo',
+            title: 'Nueva sesión | Gobernanza',
             loadComponent: () => import('./features/seguimiento-operativo/sesion-form/sesion-form').then(m => m.SesionForm),
           },
           {
             path: 'sesiones/:id',
-            title: 'Detalle de sesión | Seguimiento Operativo',
+            title: 'Detalle de sesión | Gobernanza',
             loadComponent: () => import('./features/seguimiento-operativo/sesion-detalle/sesion-detalle').then(m => m.SesionDetalle),
           },
           {
             path: 'sesiones/:id/editar',
-            title: 'Editar sesión | Seguimiento Operativo',
+            title: 'Editar sesión | Gobernanza',
             loadComponent: () => import('./features/seguimiento-operativo/sesion-form/sesion-form').then(m => m.SesionForm),
           },
         ],
+      },
+      // Compatibilidad con los enlaces anteriores
+      { path: 'seguimiento-operativo', redirectTo: 'reuniones/operativo/sesiones' },
+      { path: 'seguimiento-operativo/sesiones', redirectTo: 'reuniones/operativo/sesiones' },
+      {
+        path: 'configuracion/drive',
+        title: 'Google Drive | Configuración',
+        loadComponent: () => import('./features/configuracion/drive-config').then(m => m.DriveConfig),
       },
       {
         path: 'documentos-clave',

@@ -6,37 +6,72 @@
       <h3>{{ etiqueta() }}</h3>
       <small>{{ ayuda() }}</small>
     </div>
-    @if (!vacio() && unico()) {
-      <span class="estado ok"><app-icon name="check" [size]="13" /> Cargado</span>
-    } @else if (vacio() && unico()) {
+    @if (!vacio() && requerido()) {
+      <span class="estado ok"><app-icon name="check" [size]="13" /> {{ documentos().length > 1 ? documentos().length + ' archivos' : 'Cargado' }}</span>
+    } @else if (vacio() && requerido()) {
       <span class="estado pendiente">Pendiente</span>
-    } @else if (!unico()) {
+    } @else if (!requerido()) {
       <span class="estado">{{ documentos().length }}</span>
     }
   </header>
 
   @for (d of documentos(); track d.id) {
-    <div class="archivo">
-      <app-icon name="file" [size]="16" />
-      <div class="info">
-        <a [href]="urlVer(d)" target="_blank" rel="noopener" class="nombre" [title]="d.nombre_original">{{ d.nombre_original }}</a>
-        <small>{{ d.tamano | tamano }} · subido {{ d.created_at | fechaLarga: false }}</small>
+    @let fmt = formato(d);
+    <article class="archivo" draggable="true" (dragstart)="iniciarArrastre($event, d)"
+             title="Arrastre a otra tarjeta para cambiar su tipo">
+      <span class="ext" [attr.data-clase]="fmt.clase" aria-hidden="true">{{ fmt.etiqueta }}</span>
+
+      <a class="nombre" [href]="urlVer(d)" target="_blank" rel="noopener" [title]="d.nombre_original">{{ d.nombre_original }}</a>
+
+      <div class="pie-archivo">
+        <span class="meta">
+          @if (d.tamano) { <span>{{ d.tamano | tamano }}</span> }
+          <span>{{ (d.drive_modificado_at ?? d.created_at) | date: 'dd/MM/yyyy' }}</span>
+        </span>
+
+        <span class="acciones">
+          <a class="accion" [href]="urlVer(d)" target="_blank" rel="noopener" title="Abrir en Google Drive" aria-label="Abrir en Google Drive">
+            <app-icon name="external" [size]="15" />
+          </a>
+          <a class="accion" [href]="urlDescargar(d)" target="_blank" rel="noopener" title="Descargar" aria-label="Descargar">
+            <app-icon name="download" [size]="15" />
+          </a>
+          <span class="mover">
+            <button type="button" class="accion" (click)="menuMover.set(menuMover() === d.id ? null : d.id)"
+                    title="Mover a otro tipo" aria-label="Mover a otro tipo"
+                    [attr.aria-expanded]="menuMover() === d.id" aria-haspopup="menu">
+              <app-icon name="move" [size]="15" />
+            </button>
+            @if (menuMover() === d.id) {
+              <div class="menu" role="menu">
+                <span class="menu-titulo">Mover a…</span>
+                @for (t of destinos(); track t.valor) {
+                  <button type="button" role="menuitem" (click)="mover(d.id, t.valor)">{{ t.etiqueta }}</button>
+                }
+              </div>
+            }
+          </span>
+          <button type="button" class="accion peligro" (click)="eliminar(d)"
+                  title="Enviar a la papelera de Drive" aria-label="Enviar a la papelera de Drive">
+            <app-icon name="trash" [size]="15" />
+          </button>
+        </span>
       </div>
-      <a class="btn-icono" [href]="urlVer(d)" target="_blank" rel="noopener" title="Ver"><app-icon name="eye" [size]="16" /></a>
-      <a class="btn-icono" [href]="urlDescargar(d)" title="Descargar"><app-icon name="download" [size]="16" /></a>
-      <button type="button" class="btn-icono peligro" (click)="eliminar(d)" title="Eliminar"><app-icon name="trash" [size]="16" /></button>
-    </div>
+    </article>
   }
 
   @if (progreso() !== null) {
-    <div class="progreso"><div [style.width.%]="progreso()"></div></div>
+    <div class="subiendo">
+      <span>Subiendo a Google Drive… {{ progreso() }}%</span>
+      <div class="progreso"><div [style.width.%]="progreso()"></div></div>
+    </div>
   } @else {
     <label class="zona">
-      <input type="file" [multiple]="!unico()" (change)="seleccionar($event)" hidden
+      <input type="file" multiple (change)="seleccionar($event)" hidden
              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.zip,.rar,.txt,.csv" />
       <app-icon name="upload" [size]="16" />
-      @if (unico() && !vacio()) { Reemplazar archivo } @else if (unico()) { Subir archivo } @else { Agregar archivos }
-      <small>o arrastre aquí · máx. 50 MB</small>
+      @if (vacio()) { Subir a Drive } @else { Agregar otro archivo }
+      <small>o arrastre aquí archivos o documentos de otra tarjeta · máx. 50 MB</small>
     </label>
   }
 

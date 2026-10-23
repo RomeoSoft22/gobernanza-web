@@ -214,3 +214,57 @@ table.tabla {
   box-shadow: 0 8px 24px rgba(0, 0, 0, .2);
   z-index: 50;
 }
+
+.alerta-ok {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--ok-suave);
+  color: var(--ok);
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+}
+
+.alerta-info {
+  background: var(--primario-suave);
+  color: var(--primario-hover);
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+}
+
+/* ---------- Modal ---------- */
+.modal-fondo {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, .45);
+  z-index: 40;
+}
+
+.modal {
+  position: fixed;
+  z-index: 41;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  background: var(--superficie);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .25);
+
+  > header, > footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 14px 18px;
+  }
+  > header { border-bottom: 1px solid var(--borde); h2 { display: flex; align-items: center; gap: 8px; } }
+  > footer { border-top: 1px solid var(--borde); justify-content: flex-end; background: #f8fafc; border-radius: 0 0 12px 12px; }
+  .modal-cuerpo { padding: 16px 18px; overflow-y: auto; }
+  input[type='checkbox'] { width: auto; }
+}

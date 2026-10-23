@@ -1,29 +1,39 @@
 <div class="page-header">
   <div>
-    <div class="migas">Gobernanza › Seguimiento Operativo</div>
-    <h1>Sesiones de Seguimiento Operativo</h1>
+    <div class="migas">Gobernanza › {{ tipo()?.nombre }}</div>
+    <h1>Sesiones de {{ tipo()?.nombre ?? '…' }}</h1>
     @if (tipo(); as t) {
-      <p>Reunión {{ t.periodicidad }} · {{ t.base_legal }}</p>
+      <p>@if (t.periodicidad) { Reunión {{ t.periodicidad }} · }{{ t.base_legal }}</p>
     }
   </div>
   <div class="acciones">
-    <a class="btn primario" routerLink="/seguimiento-operativo/sesiones/nueva">
+    <button type="button" class="btn" (click)="nuevoAnio()" [disabled]="creandoAnio()"
+            title="Crea las carpetas del año en Drive para reuniones ordinarias y extraordinarias">
+      <app-icon name="calendar" [size]="16" /> {{ creandoAnio() ? 'Creando…' : 'Nuevo año' }}
+    </button>
+    <a class="btn primario" [routerLink]="base() + '/nueva'" [queryParams]="{ clase: claseActiva() }">
       <app-icon name="plus" [size]="16" /> Nueva sesión
     </a>
   </div>
 </div>
+
+@if (aviso()) {
+  <div class="alerta-ok"><app-icon name="check" [size]="16" /> {{ aviso() }}</div>
+}
 
 @if (resumen(); as r) {
   <div class="grid-stats">
     <div class="card stat">
       <div class="etiqueta">Sesiones {{ anioActivo() ?? 'registradas' }}</div>
       <div class="valor">{{ r.total }}</div>
-      <div class="detalle">{{ r.por_estado.realizada ?? 0 }} realizadas · {{ r.por_estado.suspendida ?? 0 }} suspendidas</div>
+      <div class="detalle">{{ r.por_clase.ordinaria ?? 0 }} ordinarias · {{ r.por_clase.extraordinaria ?? 0 }} extraordinarias</div>
     </div>
     <div class="card stat">
       <div class="etiqueta">Última sesión</div>
       <div class="valor">{{ r.ultima ? 'N° ' + r.ultima.numero : '—' }}</div>
-      <div class="detalle">{{ r.ultima?.fecha | fechaLarga }}</div>
+      <div class="detalle">
+        @if (r.ultima) { <span class="cap">{{ r.ultima.clase }}</span> · } {{ r.ultima?.fecha | fechaLarga }}
+      </div>
     </div>
     <button type="button" class="card stat stat-clic" (click)="verPendientes('sin_acta')">
       <div class="etiqueta">Realizadas sin acta</div>
@@ -38,18 +48,26 @@
   </div>
 }
 
-<!-- Pestañas por año -->
-<div class="tabs" role="tablist">
-  <button type="button" role="tab" [class.activo]="anioActivo() === null" (click)="seleccionarAnio(null)">
-    Todos
-  </button>
-  @for (a of anios(); track a.anio) {
-    <button type="button" role="tab" [class.activo]="anioActivo() === a.anio" (click)="seleccionarAnio(a.anio)"
-            [title]="'Sesiones N° ' + a.desde + ' a N° ' + a.hasta">
-      {{ a.anio }}
-      <span class="contador">{{ a.total }}</span>
-    </button>
-  }
+<div class="barra-navegacion">
+  <!-- Pestañas por año -->
+  <div class="tabs" role="tablist" aria-label="Año">
+    <button type="button" role="tab" [class.activo]="anioActivo() === null" (click)="seleccionarAnio(null)">Todos</button>
+    @for (a of anios(); track a.anio) {
+      <button type="button" role="tab" [class.activo]="anioActivo() === a.anio" (click)="seleccionarAnio(a.anio)"
+              [title]="a.ordinarias + ' ordinarias · ' + a.extraordinarias + ' extraordinarias'">
+        {{ a.anio }}
+        <span class="contador">{{ a.total }}</span>
+      </button>
+    }
+  </div>
+
+  <!-- Ordinarias / extraordinarias -->
+  <div class="segmentado" role="group" aria-label="Clase de reunión">
+    <button type="button" [class.activo]="claseActiva() === null" (click)="seleccionarClase(null)">Todas</button>
+    @for (c of clases; track c.valor) {
+      <button type="button" [class.activo]="claseActiva() === c.valor" (click)="seleccionarClase(c.valor)">{{ c.plural }}</button>
+    }
+  </div>
 </div>
 
 <div class="card panel">
@@ -136,7 +154,10 @@
       <tbody>
         @for (s of pagina()?.data ?? []; track s.id) {
           <tr class="clic" (click)="abrir(s)">
-            <td><strong class="numero">Sesión N° {{ s.numero }}</strong></td>
+            <td>
+              <strong class="numero">Sesión N° {{ s.numero }}</strong>
+              <div><span class="clase" [class.extra]="s.clase === 'extraordinaria'">{{ s.clase }}</span></div>
+            </td>
             <td class="nowrap">{{ s.fecha | fechaLarga }}</td>
             <td class="nowrap muted">
               @if (s.hora_inicio) { {{ s.hora_inicio | hora }}@if (s.hora_fin) { – {{ s.hora_fin | hora }} } } @else { — }
@@ -157,10 +178,15 @@
               </div>
             </td>
             <td class="acciones-fila" (click)="$event.stopPropagation()">
-              <a class="btn-icono" [routerLink]="['/seguimiento-operativo/sesiones', s.id]" title="Ver detalle y documentos">
+              @if (s.drive_folder_url) {
+                <a class="btn-icono" [href]="s.drive_folder_url" target="_blank" rel="noopener" title="Abrir carpeta en Google Drive">
+                  <app-icon name="cloud" [size]="16" />
+                </a>
+              }
+              <a class="btn-icono" [routerLink]="[base(), s.id]" title="Ver detalle y documentos">
                 <app-icon name="eye" [size]="16" />
               </a>
-              <a class="btn-icono" [routerLink]="['/seguimiento-operativo/sesiones', s.id, 'editar']" title="Editar">
+              <a class="btn-icono" [routerLink]="[base(), s.id, 'editar']" title="Editar">
                 <app-icon name="edit" [size]="16" />
               </a>
             </td>

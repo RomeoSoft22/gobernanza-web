@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
+import { forkJoin, map, switchMap } from 'rxjs';
 import { SesionesService } from '../../core/services/sesiones.service';
 import { Icon } from '../../shared/icon/icon';
 import { FechaLargaPipe } from '../../shared/pipes';
@@ -17,26 +18,35 @@ import { FechaLargaPipe } from '../../shared/pipes';
       </div>
     </div>
 
+    @if (drive(); as d) {
+      @if (!d.conectado) {
+        <div class="alerta-info">
+          Google Drive aún no está conectado. <a routerLink="/configuracion/drive">Configurar la integración</a>
+        </div>
+      }
+    }
+
     <div class="modulos">
-      <a class="card modulo" routerLink="/seguimiento-operativo/sesiones">
-        <div class="icono"><app-icon name="calendar" [size]="22" /></div>
-        <div class="cuerpo">
-          <h2>Seguimiento Operativo</h2>
-          <p>Reunión semanal · RA 315-2026</p>
-          @if (resumen(); as r) {
+      @for (m of modulos(); track m.tipo.id) {
+        <a class="card modulo" [routerLink]="['/reuniones', m.tipo.slug, 'sesiones']">
+          <div class="icono"><app-icon [name]="m.tipo.slug === 'tactico' ? 'target' : 'calendar'" [size]="22" /></div>
+          <div class="cuerpo">
+            <h2>{{ m.tipo.nombre }}</h2>
+            <p>@if (m.tipo.periodicidad) { Reunión {{ m.tipo.periodicidad }} · }{{ m.tipo.base_legal }}</p>
             <div class="datos">
-              <span><strong>{{ r.total }}</strong> sesiones</span>
-              @if (r.ultima) {
-                <span>Última: <strong>N° {{ r.ultima.numero }}</strong> ({{ r.ultima.fecha | fechaLarga: false }})</span>
+              <span><strong>{{ m.resumen.por_clase.ordinaria ?? 0 }}</strong> ordinarias</span>
+              <span><strong>{{ m.resumen.por_clase.extraordinaria ?? 0 }}</strong> extraordinarias</span>
+              @if (m.resumen.ultima; as u) {
+                <span>Última: <strong>N° {{ u.numero }}</strong> ({{ u.fecha | fechaLarga: false }})</span>
               }
-              @if (r.realizadas_sin_acta) {
-                <span class="alerta"><app-icon name="alert" [size]="14" /> {{ r.realizadas_sin_acta }} sin acta</span>
+              @if (m.resumen.realizadas_sin_acta) {
+                <span class="alerta"><app-icon name="alert" [size]="14" /> {{ m.resumen.realizadas_sin_acta }} sin acta</span>
               }
             </div>
-          }
-        </div>
-        <app-icon name="chevron" class="ir" />
-      </a>
+          </div>
+          <app-icon name="chevron" class="ir" />
+        </a>
+      }
 
       <div class="card modulo deshabilitado">
         <div class="icono gris"><app-icon name="folder" [size]="22" /></div>
@@ -69,5 +79,13 @@ import { FechaLargaPipe } from '../../shared/pipes';
   `,
 })
 export class Inicio {
-  protected resumen = toSignal(inject(SesionesService).resumen());
+  private api = inject(SesionesService);
+
+  protected drive = toSignal(this.api.estadoDrive());
+  protected modulos = toSignal(
+    this.api.tiposReunion().pipe(
+      switchMap(tipos => forkJoin(tipos.map(t => this.api.resumen({ tipo_reunion_id: t.id }).pipe(map(resumen => ({ tipo: t, resumen })))))),
+    ),
+    { initialValue: [] },
+  );
 }

@@ -126,3 +126,50 @@
 }
 
 .paginas { display: flex; gap: 4px; }
+
+.barra-navegacion {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--borde);
+  margin-bottom: 14px;
+
+  .tabs { border-bottom: 0; margin-bottom: 0; }
+}
+
+.segmentado {
+  display: inline-flex;
+  background: #e2e8f0;
+  border-radius: 9px;
+  padding: 3px;
+  margin-bottom: 6px;
+
+  button {
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--texto-2);
+    padding: 5px 12px;
+    border-radius: 7px;
+    cursor: pointer;
+
+    &.activo { background: #fff; color: var(--texto); box-shadow: 0 1px 2px rgba(0, 0, 0, .1); }
+  }
+}
+
+.clase {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--texto-2);
+
+  &.extra { color: #7c3aed; }
+}
+
+.cap { text-transform: capitalize; }

@@ -1,47 +1,59 @@
-# gobernanza-web
+# Frontend
 
-Front-end (Angular 20) del **Sistema de Control de Reuniones de Gobernanza**: sesiones de la reunión de
-Seguimiento Operativo (RA 315-2026) separadas por año, con filtros de búsqueda y gestión de acta,
-lista de asistencia, presentación y adjuntos.
+This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.41.
 
-La API está en [gobernanza-api](https://github.com/RomeoSoft22/gobernanza-api).
+## Development server
 
-## Desarrollo
+To start a local development server, run:
 
 ```bash
-npm install
-npm start          # http://localhost:4200
+ng serve
 ```
 
-La URL de la API se configura en `src/environments/environment.ts` (por defecto `http://127.0.0.1:8000/api`).
+Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
 
-## Estructura
+## Code scaffolding
 
-```
-src/app/
-├── core/
-│   ├── menu.ts                  # opciones del menú lateral
-│   ├── models/sesion.model.ts   # tipos, estados, catálogos
-│   └── services/sesiones.service.ts
-├── layout/shell.*               # menú lateral + cabecera
-├── shared/                      # iconos y pipes
-└── features/
-    ├── inicio/
-    ├── proximamente/            # reserva para módulos futuros (Documentos clave)
-    └── seguimiento-operativo/
-        ├── sesiones-lista/      # pestañas por año, indicadores, filtros, tabla
-        ├── sesion-detalle/      # datos de la sesión + documentos
-        ├── sesion-form/         # crear / editar
-        └── documento-slot/      # subir, ver, descargar, reemplazar, eliminar
-```
-
-## Agregar una opción al menú
-
-1. Añadir el ítem en `src/app/core/menu.ts`.
-2. Registrar su ruta en `src/app/app.routes.ts`.
-
-## Build
+Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
 
 ```bash
-npm run build      # dist/gobernanza-web
+ng generate component component-name
 ```
+
+For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+
+```bash
+ng generate --help
+```
+
+## Building
+
+To build the project run:
+
+```bash
+ng build
+```
+
+This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+
+## Running unit tests
+
+To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+
+```bash
+ng test
+```
+
+## Running end-to-end tests
+
+For end-to-end (e2e) testing, run:
+
+```bash
+ng e2e
+```
+
+Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+
+## Additional Resources
+
+For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.

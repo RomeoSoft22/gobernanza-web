@@ -1,13 +1,15 @@
 export type EstadoSesion = 'programada' | 'realizada' | 'reprogramada' | 'suspendida';
 export type Modalidad = 'presencial' | 'virtual' | 'mixta';
 export type TipoDocumento = 'acta' | 'asistencia' | 'presentacion' | 'adjunto';
+export type Clase = 'ordinaria' | 'extraordinaria';
 
 export interface TipoReunion {
   id: number;
   codigo: string;
+  slug: string;
   nombre: string;
   base_legal: string | null;
-  periodicidad: string;
+  periodicidad: string | null;
   descripcion: string | null;
 }
 
@@ -20,11 +22,15 @@ export interface SesionDocumento {
   tamano: number;
   descripcion: string | null;
   created_at: string;
+  drive_file_id: string | null;
+  drive_url: string | null;
+  drive_modificado_at: string | null;
 }
 
 export interface Sesion {
   id: number;
   tipo_reunion_id: number;
+  clase: Clase;
   numero: number;
   anio: number;
   fecha: string;
@@ -36,6 +42,10 @@ export interface Sesion {
   agenda: string | null;
   acuerdos: string | null;
   observaciones: string | null;
+  drive_folder_id: string | null;
+  drive_folder_url: string | null;
+  drive_sincronizado_at: string | null;
+  aviso_drive?: string | null;
   tipo_reunion?: TipoReunion;
   documentos?: SesionDocumento[];
   acta_count?: number;
@@ -44,18 +54,21 @@ export interface Sesion {
   adjuntos_count?: number;
 }
 
-export type SesionPayload = Omit<Sesion, 'id' | 'anio' | 'tipo_reunion' | 'documentos'>;
+export type SesionPayload = Pick<Sesion,
+  'tipo_reunion_id' | 'clase' | 'numero' | 'fecha' | 'hora_inicio' | 'hora_fin' | 'modalidad'
+  | 'lugar' | 'estado' | 'agenda' | 'acuerdos' | 'observaciones'>;
 
 export interface AnioSesiones {
   anio: number;
   total: number;
-  desde: number;
-  hasta: number;
+  ordinarias: number;
+  extraordinarias: number;
 }
 
 export interface Resumen {
   total: number;
   por_estado: Partial<Record<EstadoSesion, number>>;
+  por_clase: Partial<Record<Clase, number>>;
   realizadas_sin_acta: number;
   realizadas_incompletas: number;
   ultima: Sesion | null;
@@ -74,6 +87,7 @@ export interface Paginado<T> {
 
 export interface FiltrosSesion {
   tipo_reunion_id?: number | null;
+  clase?: Clase | null;
   anio?: number | null;
   numero?: number | null;
   fecha_desde?: string | null;
@@ -96,6 +110,11 @@ export const ESTADOS: { valor: EstadoSesion; etiqueta: string }[] = [
   { valor: 'suspendida', etiqueta: 'Suspendida' },
 ];
 
+export const CLASES: { valor: Clase; etiqueta: string; plural: string }[] = [
+  { valor: 'ordinaria', etiqueta: 'Ordinaria', plural: 'Ordinarias' },
+  { valor: 'extraordinaria', etiqueta: 'Extraordinaria', plural: 'Extraordinarias' },
+];
+
 export const MODALIDADES: { valor: Modalidad; etiqueta: string }[] = [
   { valor: 'presencial', etiqueta: 'Presencial' },
   { valor: 'virtual', etiqueta: 'Virtual' },
@@ -111,12 +130,59 @@ export const DOCUMENTACION: { valor: string; etiqueta: string }[] = [
   { valor: 'con_adjuntos', etiqueta: 'Con adjuntos adicionales' },
 ];
 
-export const TIPOS_DOCUMENTO: { valor: TipoDocumento; etiqueta: string; unico: boolean; ayuda: string }[] = [
-  { valor: 'acta', etiqueta: 'Acta de la reunión', unico: true, ayuda: 'Acta firmada de la sesión' },
-  { valor: 'asistencia', etiqueta: 'Lista de asistencia', unico: true, ayuda: 'Registro de participantes' },
-  { valor: 'presentacion', etiqueta: 'Presentación', unico: true, ayuda: 'Diapositivas expuestas' },
-  { valor: 'adjunto', etiqueta: 'Adjuntos adicionales', unico: false, ayuda: 'Informes, anexos u otros' },
+/** "requerido" = cuenta para la documentación obligatoria. Todos admiten varios archivos (p. ej. acta en PDF y Word). */
+export const TIPOS_DOCUMENTO: { valor: TipoDocumento; etiqueta: string; requerido: boolean; ayuda: string }[] = [
+  { valor: 'acta', etiqueta: 'Acta de la reunión', requerido: true, ayuda: 'Acta firmada (PDF) y/o versión Word' },
+  { valor: 'asistencia', etiqueta: 'Lista de asistencia', requerido: true, ayuda: 'Registro de participantes' },
+  { valor: 'presentacion', etiqueta: 'Presentación', requerido: true, ayuda: 'Diapositivas expuestas' },
+  { valor: 'adjunto', etiqueta: 'Adjuntos adicionales', requerido: false, ayuda: 'Informes, anexos u otros' },
 ];
+
+export interface ResultadoSincronizacion {
+  agregados: number;
+  desvinculados: number;
+  total: number;
+}
+
+export interface CarpetaDrive {
+  id: number;
+  tipo_reunion_id: number;
+  clase: Clase;
+  anio: number | null;
+  folder_id: string;
+  nombre: string;
+  url: string;
+}
+
+export interface EstadoImportacion {
+  estado: 'en_curso' | 'terminado' | 'error' | 'interrumpido';
+  tipo_reunion_id: number;
+  reunion: string;
+  clase: Clase;
+  inicio: string;
+  actualizado: string;
+  linea: string;
+  sesiones: number;
+  resultado: ResultadoImportacion | null;
+  mensaje: string | null;
+}
+
+export interface EstadoDrive {
+  configurado: boolean;
+  conectado: boolean;
+  email: string | null;
+  redirect_uri: string;
+  carpetas: CarpetaDrive[];
+  importacion: EstadoImportacion | null;
+}
+
+export interface ResultadoImportacion {
+  anios: number;
+  sesiones: number;
+  documentos: number;
+  desvinculados: number;
+  omitidas: string[];
+}
 
 export const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',

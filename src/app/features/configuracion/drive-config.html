@@ -1,0 +1,139 @@
+<div class="page-header">
+  <div>
+    <div class="migas">Configuración › Google Drive</div>
+    <h1>Integración con Google Drive</h1>
+    <p>Google Drive es el único repositorio de los documentos: el sistema lee y sube los archivos directamente a sus carpetas.</p>
+  </div>
+</div>
+
+@if (mensaje()) { <div class="alerta-ok"><app-icon name="check" [size]="16" /> {{ mensaje() }}</div> }
+@if (error()) { <div class="alerta-error">{{ error() }}</div> }
+
+@if (estado(); as e) {
+  <!-- 1. Conexión -->
+  <section class="card paso">
+    <div class="numero-paso" [class.listo]="e.conectado">1</div>
+    <div class="contenido-paso">
+      <h2>Conectar la cuenta de Google</h2>
+
+      @if (!e.configurado) {
+        <p>Falta registrar las credenciales OAuth de Google en el archivo <code>.env</code> de <strong>gobernanza-api</strong>:</p>
+        <pre>GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=...</pre>
+        <p class="muted">En Google Cloud Console, al crear el cliente OAuth (tipo "Aplicación web"), registre este URI de redireccionamiento autorizado:</p>
+        <pre>{{ e.redirect_uri }}</pre>
+        <p class="muted">Los pasos completos están en el README de gobernanza-api.</p>
+      } @else if (!e.conectado) {
+        <p>Inicie sesión con la cuenta que tiene acceso a las carpetas de gobernanza. Solo se hace una vez.</p>
+        <button type="button" class="btn primario" (click)="conectar()" [disabled]="ocupado() === 'conectar'">
+          <app-icon name="cloud" [size]="16" /> {{ ocupado() === 'conectar' ? 'Redirigiendo…' : 'Conectar con Google Drive' }}
+        </button>
+      } @else {
+        <div class="conectado">
+          <span class="punto"></span>
+          <span>Conectado como <strong>{{ e.email }}</strong></span>
+          <button type="button" class="btn sm peligro" (click)="desconectar()">Desconectar</button>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- 2. Carpetas -->
+  <section class="card paso" [class.bloqueado]="!e.conectado">
+    <div class="numero-paso" [class.listo]="e.carpetas.length > 0">2</div>
+    <div class="contenido-paso">
+      <h2>Carpetas de cada reunión</h2>
+      <p class="muted">
+        Pegue el enlace de la carpeta que contiene los años (p. ej. <em>2. Reuniones Ordinarias</em>, que contiene <em>2025</em>, <em>2026</em>…).
+        Dentro de cada año el sistema crea las carpetas de sesión con el formato <em>2026.10.19 - 72va Reunión</em>.
+      </p>
+
+      @for (t of tipos(); track t.id) {
+        <h3>{{ t.nombre }}</h3>
+        <div class="grid-clases">
+          @for (c of clases; track c.valor) {
+            @let clave = claveDe(t.id, c.valor);
+            @let raiz = raices()[clave];
+            <div class="carpeta" [class.asignada]="raiz">
+              <div class="carpeta-titulo">
+                <strong>Reuniones {{ c.plural.toLowerCase() }}</strong>
+                @if (raiz) {
+                  <button type="button" class="btn-icono peligro" (click)="quitarCarpeta(t, c.valor)" title="Quitar carpeta" [disabled]="!!ocupado()">
+                    <app-icon name="x" [size]="14" />
+                  </button>
+                }
+              </div>
+
+              @if (raiz) {
+                <a class="enlace-carpeta" [href]="raiz.url" target="_blank" rel="noopener">
+                  <app-icon name="folder" [size]="16" /> {{ raiz.nombre }} <app-icon name="external" [size]="12" />
+                </a>
+                <div class="anios">
+                  @for (a of aniosDe(t.id, c.valor); track a.id) {
+                    <a [href]="a.url" target="_blank" rel="noopener" class="chip">{{ a.anio }}</a>
+                  } @empty {
+                    <span class="muted pequeno">Sin años detectados todavía.</span>
+                  }
+                </div>
+                @let imp = importacion();
+                <button type="button" class="btn sm" (click)="importar(t, c.valor)" [disabled]="!!ocupado() || importando()">
+                  <app-icon name="download" [size]="14" />
+                  {{ imp && claseDe(imp) === clave && imp.estado === 'en_curso' ? 'Importando…' : 'Importar sesiones y documentos' }}
+                </button>
+                @if (imp && claseDe(imp) === clave) {
+                  <div class="importacion" [class]="imp.estado">
+                    @switch (imp.estado) {
+                      @case ('en_curso') {
+                        <div class="barra-indeterminada"><div></div></div>
+                        <span><strong>{{ imp.sesiones }}</strong> sesión(es) procesadas · {{ imp.linea }}</span>
+                      }
+                      @case ('terminado') {
+                        <span>
+                          <app-icon name="check" [size]="14" />
+                          {{ imp.resultado?.anios }} año(s), {{ imp.resultado?.sesiones }} sesión(es), {{ imp.resultado?.documentos }} documento(s)@if (imp.resultado?.desvinculados) {, {{ imp.resultado?.desvinculados }} desvinculado(s) por ya no estar en su carpeta}.
+                        </span>
+                        @if (imp.resultado?.omitidas?.length) {
+                          <span class="alerta-texto">Carpetas omitidas por no seguir el formato: {{ imp.resultado?.omitidas?.join(', ') }}</span>
+                        }
+                      }
+                      @default {
+                        <span class="alerta-texto">{{ imp.mensaje }}</span>
+                      }
+                    }
+                  </div>
+                }
+              } @else {
+                <div class="fila-enlace">
+                  <input [ngModel]="enlaces()[clave] ?? ''" (ngModelChange)="setEnlace(clave, $event)"
+                         placeholder="https://drive.google.com/drive/folders/…" [disabled]="!e.conectado"
+                         [attr.aria-label]="'Enlace de la carpeta de ' + t.nombre + ' ' + c.plural" />
+                  <button type="button" class="btn sm primario" (click)="guardarCarpeta(t, c.valor)"
+                          [disabled]="!e.conectado || !!ocupado() || !(enlaces()[clave] ?? '').trim()">
+                    {{ ocupado() === clave ? 'Verificando…' : 'Asignar' }}
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- 3. Uso -->
+  <section class="card paso">
+    <div class="numero-paso">3</div>
+    <div class="contenido-paso">
+      <h2>Uso diario</h2>
+      <ul>
+        <li><strong>Nuevo año</strong> (en el listado de sesiones): crea la carpeta del año en ordinarias y extraordinarias.</li>
+        <li><strong>Nueva sesión</strong>: crea su carpeta dentro del año correspondiente.</li>
+        <li><strong>Subir documento</strong>: se guarda directamente en la carpeta de la sesión en Drive.</li>
+        <li><strong>Detalle de la sesión</strong>: lista en vivo los archivos de su carpeta en Drive, incluidos los agregados directamente en Drive (p. ej. actas en Word).</li>
+      </ul>
+      <a class="btn sm" routerLink="/reuniones/operativo/sesiones">Ir a Seguimiento Operativo</a>
+    </div>
+  </section>
+} @else if (!error()) {
+  <p class="muted">Cargando…</p>
+}
