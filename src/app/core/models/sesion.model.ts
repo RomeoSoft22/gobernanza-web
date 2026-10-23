@@ -25,6 +25,8 @@ export interface SesionDocumento {
   drive_file_id: string | null;
   drive_url: string | null;
   drive_modificado_at: string | null;
+  /** Descarga directa desde Google Drive. */
+  url_descarga: string | null;
 }
 
 export interface Sesion {

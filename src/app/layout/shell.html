@@ -57,6 +57,16 @@
       <app-icon name="menu" />
     </button>
     <span class="titulo">Sistema de Control de Reuniones de Gobernanza</span>
+    @if (acceso.usuario(); as u) {
+      <div class="usuario">
+        <span class="avatar" aria-hidden="true">{{ (u.nombre || u.correo || '?').charAt(0).toUpperCase() }}</span>
+        <span class="datos-usuario">
+          <strong>{{ u.nombre || u.correo }}</strong>
+          @if (u.nombre && u.correo) { <small>{{ u.correo }}</small> }
+        </span>
+        <button type="button" class="btn sm" (click)="salir()">Salir</button>
+      </div>
+    }
   </header>
   <main>
     <router-outlet />

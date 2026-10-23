@@ -109,6 +109,40 @@ nav { padding: 8px 10px; flex: 1; }
   .titulo { font-weight: 600; color: var(--texto-2); font-size: 14px; }
 }
 
+.usuario {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--primario-suave);
+    color: var(--primario);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .datos-usuario {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    min-width: 0;
+    strong, small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    strong { font-size: 13px; }
+    small { font-size: 11.5px; color: var(--texto-2); }
+  }
+}
+
+@media (max-width: 700px) {
+  .topbar .titulo, .usuario .datos-usuario { display: none; }
+}
+
 .hamburguesa { display: none; }
 
 main { padding: 24px; max-width: 1400px; width: 100%; }

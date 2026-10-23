@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
+import { AccesoService } from '../core/acceso.service';
 import { MENU, MenuItem } from '../core/menu';
 import { Icon } from '../shared/icon/icon';
 
@@ -13,12 +14,17 @@ import { Icon } from '../shared/icon/icon';
 })
 export class Shell {
   private router = inject(Router);
+  protected acceso = inject(AccesoService);
   protected menu = MENU;
   protected abiertos = signal<Set<string>>(new Set(['Seguimiento Operativo', 'Seguimiento Táctico']));
   protected menuMovil = signal(false);
 
   constructor() {
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => this.menuMovil.set(false));
+  }
+
+  protected salir() {
+    if (confirm('¿Cerrar sesión? También se cerrará en los demás sistemas de Juarez Campos.')) this.acceso.salir();
   }
 
   protected alternar(item: MenuItem) {

@@ -1,10 +1,15 @@
 import { Routes } from '@angular/router';
+import { accesoGuard } from './core/acceso.guard';
 import { Shell } from './layout/shell';
 
 export const routes: Routes = [
+  // Ingreso con identidad.juarezcampos.net (fuera del área protegida)
+  { path: 'acceso', title: 'Ingresar | Gobernanza', loadComponent: () => import('./features/acceso/acceso').then(m => m.Acceso) },
+  { path: 'callback', title: 'Validando sesión | Gobernanza', loadComponent: () => import('./features/acceso/callback').then(m => m.Callback) },
   {
     path: '',
     component: Shell,
+    canActivate: [accesoGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'inicio' },
       {

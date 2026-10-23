@@ -125,14 +125,6 @@ export class SesionesService {
     );
   }
 
-  urlVer(doc: SesionDocumento): string {
-    return `${this.api}/documentos/${doc.id}/ver`;
-  }
-
-  urlDescargar(doc: SesionDocumento): string {
-    return `${this.api}/documentos/${doc.id}/descargar`;
-  }
-
   private params(obj: object): HttpParams {
     let p = new HttpParams();
     Object.entries(obj).forEach(([k, v]) => {

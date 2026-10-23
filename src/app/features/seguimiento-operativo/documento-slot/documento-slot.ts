@@ -57,8 +57,8 @@ export class DocumentoSlot {
   protected menuMover = signal<number | null>(null);
   protected destinos = computed(() => TIPOS_DOCUMENTO.filter(t => t.valor !== this.tipo()));
 
-  protected urlVer = (d: SesionDocumento) => d.drive_url ?? this.api.urlVer(d);
-  protected urlDescargar = (d: SesionDocumento) => this.api.urlDescargar(d);
+  protected urlVer = (d: SesionDocumento) => d.drive_url ?? '#';
+  protected urlDescargar = (d: SesionDocumento) => d.url_descarga ?? d.drive_url ?? '#';
 
   protected formato(d: SesionDocumento): { etiqueta: string; clase: string } {
     if (d.mime && GOOGLE[d.mime]) return GOOGLE[d.mime];
