@@ -43,6 +43,8 @@
           <dd>@if (s.hora_inicio) { {{ s.hora_inicio | hora }}@if (s.hora_fin) { – {{ s.hora_fin | hora }} } } @else { — }</dd>
           <dt>Modalidad</dt><dd class="cap">{{ s.modalidad }}</dd>
           <dt>Lugar / enlace</dt><dd>{{ s.lugar || '—' }}</dd>
+          @if (s.registrado_por) { <dt>Registrado por</dt><dd>{{ s.registrado_por }}</dd> }
+          @if (s.actualizado_por) { <dt>Última edición</dt><dd>{{ s.actualizado_por }}</dd> }
         </dl>
 
         <div class="avance">

@@ -8,7 +8,7 @@
   </div>
 
   <nav>
-    @for (seccion of menu; track seccion.titulo) {
+    @for (seccion of menu(); track seccion.titulo) {
       <div class="seccion">{{ seccion.titulo }}</div>
       @for (item of seccion.items; track item.etiqueta) {
         @if (item.hijos) {
@@ -62,7 +62,7 @@
         <span class="avatar" aria-hidden="true">{{ (u.nombre || u.correo || '?').charAt(0).toUpperCase() }}</span>
         <span class="datos-usuario">
           <strong>{{ u.nombre || u.correo }}</strong>
-          @if (u.nombre && u.correo) { <small>{{ u.correo }}</small> }
+          <small>{{ u.admin ? 'Administrador' : (u.roles.join(', ') || 'Usuario') }}</small>
         </span>
         <button type="button" class="btn sm" (click)="salir()">Salir</button>
       </div>

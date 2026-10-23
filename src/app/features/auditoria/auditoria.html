@@ -1,0 +1,141 @@
+<div class="page-header">
+  <div>
+    <div class="migas">Administración › Auditoría</div>
+    <h1>Auditoría</h1>
+    <p>Quién registró, editó, movió o eliminó cada elemento de la gobernanza, y cuándo.</p>
+  </div>
+  <div class="acciones">
+    <button type="button" class="btn" (click)="exportar()" [disabled]="exportando() || !pagina()?.total">
+      <app-icon name="download" [size]="16" /> {{ exportando() ? 'Exportando…' : 'Exportar a Excel (CSV)' }}
+    </button>
+  </div>
+</div>
+
+<div class="card panel">
+  <form class="filtros" [formGroup]="form">
+    <div class="campo">
+      <label for="a-desde">Desde</label>
+      <input id="a-desde" type="date" formControlName="desde" />
+    </div>
+    <div class="campo">
+      <label for="a-hasta">Hasta</label>
+      <input id="a-hasta" type="date" formControlName="hasta" />
+    </div>
+    <div class="campo">
+      <label for="a-usuario">Usuario</label>
+      <input id="a-usuario" formControlName="usuario" list="a-usuarios" placeholder="Nombre o correo" />
+      <datalist id="a-usuarios">
+        @for (u of catalogos()?.usuarios ?? []; track u.usuario_correo) {
+          <option [value]="u.usuario_correo">{{ u.usuario_nombre }}</option>
+        }
+      </datalist>
+    </div>
+    <div class="campo">
+      <label for="a-modulo">Módulo</label>
+      <select id="a-modulo" formControlName="modulo">
+        <option value="">Todos</option>
+        @for (m of catalogos()?.modulos ?? []; track m.valor) { <option [value]="m.valor">{{ m.etiqueta }}</option> }
+      </select>
+    </div>
+    <div class="campo">
+      <label for="a-accion">Acción</label>
+      <select id="a-accion" formControlName="accion">
+        <option value="">Todas</option>
+        @for (a of catalogos()?.acciones ?? []; track a.valor) { <option [value]="a.valor">{{ a.etiqueta }}</option> }
+      </select>
+    </div>
+    <div class="campo ancho">
+      <label for="a-buscar">Buscar en la descripción</label>
+      <input id="a-buscar" formControlName="buscar" placeholder="Ej. Sesión N° 72, acta, nombre de archivo…" />
+    </div>
+    @if (hayFiltros()) {
+      <button type="button" class="btn limpiar" (click)="limpiar()"><app-icon name="x" [size]="16" /> Limpiar</button>
+    }
+  </form>
+
+  @if (error()) { <div class="alerta-error">{{ error() }}</div> }
+
+  <div class="tabla-wrap" [class.cargando]="cargando()">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>Fecha y hora</th>
+          <th>Usuario</th>
+          <th>Acción</th>
+          <th>Descripción</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (e of pagina()?.data ?? []; track e.id) {
+          <tr class="clic" (click)="alternar(e)" [class.abierta]="abierto() === e.id">
+            <td class="nowrap">
+              <div>{{ e.created_at | date: 'dd/MM/yyyy' }}</div>
+              <div class="muted pequeno">{{ e.created_at | date: 'HH:mm:ss' }}</div>
+            </td>
+            <td>
+              <div class="usuario">{{ e.usuario_nombre || 'Sistema' }}</div>
+              @if (e.usuario_correo) { <div class="muted pequeno">{{ e.usuario_correo }}</div> }
+            </td>
+            <td><span class="accion" [attr.data-tono]="tono(e.accion)">{{ etiquetas()[e.accion] ?? e.accion }}</span></td>
+            <td class="descripcion">{{ e.descripcion }}</td>
+            <td class="flecha"><app-icon name="chevron" [size]="16" [class.girada]="abierto() === e.id" /></td>
+          </tr>
+          @if (abierto() === e.id) {
+            <tr class="detalle">
+              <td colspan="5">
+                <div class="detalle-grid">
+                  @if (cambios(e).length) {
+                    <div class="bloque ancho">
+                      <h3>Cambios</h3>
+                      <table class="cambios">
+                        <thead><tr><th>Campo</th><th>Antes</th><th>Después</th></tr></thead>
+                        <tbody>
+                          @for (c of cambios(e); track c.campo) {
+                            <tr><td>{{ c.campo }}</td><td class="antes">{{ texto(c.antes) }}</td><td class="despues">{{ texto(c.despues) }}</td></tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  }
+                  @for (d of otrosDatos(e) | keyvalue; track d.key) {
+                    <div class="bloque">
+                      <h3>{{ d.key.replace('_', ' ') }}</h3>
+                      <p class="valor">{{ texto(d.value) }}</p>
+                    </div>
+                  }
+                  <div class="bloque">
+                    <h3>Perfil</h3>
+                    <p class="valor">{{ e.usuario_roles || '—' }}</p>
+                  </div>
+                  <div class="bloque">
+                    <h3>Origen</h3>
+                    <p class="valor">{{ e.ip || '—' }}</p>
+                    @if (e.navegador) { <p class="muted pequeno">{{ e.navegador }}</p> }
+                  </div>
+                </div>
+              </td>
+            </tr>
+          }
+        } @empty {
+          @if (!cargando()) {
+            <tr><td colspan="5" class="vacio">No hay movimientos con los filtros seleccionados.</td></tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (pagina(); as p) {
+    @if (p.total > 0) {
+      <div class="paginacion">
+        <span class="muted">Mostrando {{ p.from }}–{{ p.to }} de {{ p.total }} movimientos</span>
+        <div class="paginas">
+          <button type="button" class="btn sm" [disabled]="p.current_page === 1" (click)="irAPagina(p.current_page - 1)">‹ Anterior</button>
+          <span class="muted pequeno">Página {{ p.current_page }} de {{ p.last_page }}</span>
+          <button type="button" class="btn sm" [disabled]="p.current_page === p.last_page" (click)="irAPagina(p.current_page + 1)">Siguiente ›</button>
+        </div>
+      </div>
+    }
+  }
+</div>

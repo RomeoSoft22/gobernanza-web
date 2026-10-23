@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { accesoGuard } from './core/acceso.guard';
+import { adminGuard } from './core/admin.guard';
 import { Shell } from './layout/shell';
 
 export const routes: Routes = [
@@ -50,7 +51,14 @@ export const routes: Routes = [
       {
         path: 'configuracion/drive',
         title: 'Google Drive | Configuración',
+        canActivate: [adminGuard],
         loadComponent: () => import('./features/configuracion/drive-config').then(m => m.DriveConfig),
+      },
+      {
+        path: 'auditoria',
+        title: 'Auditoría | Gobernanza',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/auditoria/auditoria').then(m => m.AuditoriaPagina),
       },
       {
         path: 'documentos-clave',

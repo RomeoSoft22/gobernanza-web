@@ -17,7 +17,8 @@ import { mensajeError } from '../../shared/errores';
           <div class="alerta-error">{{ error() }}</div>
           <a class="btn primario bloque" routerLink="/acceso">Volver a ingresar</a>
         } @else {
-          <p class="ayuda">Validando tu sesión…</p>
+          <div class="spinner" aria-hidden="true"></div>
+          <p class="ayuda" role="status">Validando tu sesión…</p>
         }
       </div>
     </main>

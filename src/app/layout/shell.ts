@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { AccesoService } from '../core/acceso.service';
@@ -15,7 +15,10 @@ import { Icon } from '../shared/icon/icon';
 export class Shell {
   private router = inject(Router);
   protected acceso = inject(AccesoService);
-  protected menu = MENU;
+  /** Menú según el perfil: las opciones de administración solo aparecen al administrador. */
+  protected menu = computed(() => MENU
+    .map(seccion => ({ ...seccion, items: seccion.items.filter(i => !i.soloAdmin || this.acceso.esAdmin()) }))
+    .filter(seccion => seccion.items.length > 0));
   protected abiertos = signal<Set<string>>(new Set(['Seguimiento Operativo', 'Seguimiento Táctico']));
   protected menuMovil = signal(false);
 
@@ -23,8 +26,9 @@ export class Shell {
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => this.menuMovil.set(false));
   }
 
+  /** Cierra la sesión aquí y en identidad, sin pedir confirmación. */
   protected salir() {
-    if (confirm('¿Cerrar sesión? También se cerrará en los demás sistemas de Juarez Campos.')) this.acceso.salir();
+    this.acceso.salir();
   }
 
   protected alternar(item: MenuItem) {

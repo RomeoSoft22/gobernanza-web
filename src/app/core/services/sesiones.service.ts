@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map, shareReplay } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
-  AnioSesiones, CarpetaDrive, Clase, EstadoDrive, EstadoImportacion, FiltrosSesion, Paginado, Resumen,
+  AnioSesiones, CarpetaDrive, CatalogosAuditoria, Clase, EstadoDrive, EstadoImportacion, EventoAuditoria, FiltrosAuditoria, FiltrosSesion, Paginado, Resumen,
   ResultadoSincronizacion, Sesion, SesionDocumento, SesionPayload, TipoDocumento, TipoReunion,
 } from '../models/sesion.model';
 
@@ -123,6 +123,21 @@ export class SesionesService {
     return this.http.post<{ resultado: ResultadoSincronizacion; sesion: Sesion }>(
       `${this.api}/sesiones/${sesionId}/drive/sincronizar`, {}, { params: { crear: crear ? 1 : 0 } },
     );
+  }
+
+  // ---------------------------------------------------------------- Auditoría (solo administrador)
+
+  auditoria(filtros: FiltrosAuditoria): Observable<Paginado<EventoAuditoria>> {
+    return this.http.get<Paginado<EventoAuditoria>>(`${this.api}/auditoria`, { params: this.params(filtros) });
+  }
+
+  catalogosAuditoria(): Observable<CatalogosAuditoria> {
+    return this.http.get<CatalogosAuditoria>(`${this.api}/auditoria/catalogos`);
+  }
+
+  /** CSV con los filtros actuales (se pide con el token, por eso no es un enlace directo). */
+  exportarAuditoria(filtros: FiltrosAuditoria): Observable<Blob> {
+    return this.http.get(`${this.api}/auditoria/exportar`, { params: this.params(filtros), responseType: 'blob' });
   }
 
   private params(obj: object): HttpParams {

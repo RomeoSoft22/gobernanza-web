@@ -13,15 +13,14 @@ import { mensajeError } from '../../shared/errores';
   template: `
     <main class="acceso">
       <div class="tarjeta">
-        <div class="logo">G</div>
-        <h1>Gobernanza</h1>
-        <p class="ayuda">Control de reuniones · Ingresa con tu cuenta de Juarez Campos.</p>
         @if (error()) {
+          <h1>No se pudo iniciar sesión</h1>
           <div class="alerta-error">{{ error() }}</div>
+          <button class="btn primario bloque" type="button" (click)="ingresar()">Volver a ingresar</button>
+        } @else {
+          <div class="spinner" aria-hidden="true"></div>
+          <p class="ayuda" role="status">Abriendo el inicio de sesión…</p>
         }
-        <button class="btn primario bloque" type="button" (click)="ingresar()" [disabled]="redirigiendo()">
-          {{ redirigiendo() ? 'Abriendo el inicio de sesión…' : 'Ingresar con mi cuenta' }}
-        </button>
       </div>
     </main>
   `,

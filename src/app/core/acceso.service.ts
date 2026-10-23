@@ -13,6 +13,8 @@ export interface UsuarioIdentidad {
   nombre: string | null;
   correo: string | null;
   roles: string[];
+  /** Perfil administrador: ve Configuración de Google Drive y Auditoría. */
+  admin: boolean;
 }
 
 const CLAVE_LOGIN = 'gobernanza.login';
@@ -34,6 +36,7 @@ export class AccesoService {
   readonly token = signal<string | null>(null);
   readonly usuario = signal<UsuarioIdentidad | null>(null);
   readonly autenticado = computed(() => !!this.token());
+  readonly esAdmin = computed(() => !!this.usuario()?.admin);
 
   private url(ruta: string): string {
     return `${environment.apiUrl}/${ruta}`;

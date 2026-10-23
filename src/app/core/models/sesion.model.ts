@@ -27,6 +27,41 @@ export interface SesionDocumento {
   drive_modificado_at: string | null;
   /** Descarga directa desde Google Drive. */
   url_descarga: string | null;
+  /** Usuario que lo subió desde el sistema, o quien lo dejó en la carpeta de Drive. */
+  registrado_por: string | null;
+}
+
+export interface EventoAuditoria {
+  id: number;
+  created_at: string;
+  usuario_nombre: string | null;
+  usuario_correo: string | null;
+  usuario_roles: string | null;
+  modulo: string;
+  accion: string;
+  entidad_tipo: string | null;
+  entidad_id: number | null;
+  sesion_id: number | null;
+  descripcion: string;
+  datos: Record<string, unknown> | null;
+  ip: string | null;
+  navegador: string | null;
+}
+
+export interface CatalogosAuditoria {
+  acciones: { valor: string; etiqueta: string }[];
+  modulos: { valor: string; etiqueta: string }[];
+  usuarios: { usuario_nombre: string; usuario_correo: string }[];
+}
+
+export interface FiltrosAuditoria {
+  desde?: string | null;
+  hasta?: string | null;
+  modulo?: string | null;
+  accion?: string | null;
+  usuario?: string | null;
+  buscar?: string | null;
+  page?: number;
 }
 
 export interface Sesion {
@@ -47,6 +82,8 @@ export interface Sesion {
   drive_folder_id: string | null;
   drive_folder_url: string | null;
   drive_sincronizado_at: string | null;
+  registrado_por: string | null;
+  actualizado_por: string | null;
   aviso_drive?: string | null;
   tipo_reunion?: TipoReunion;
   documentos?: SesionDocumento[];

@@ -7,6 +7,8 @@ export interface MenuItem {
   hijos?: MenuItem[];
   /** Muestra la opción deshabilitada con la etiqueta "Próximamente". */
   proximamente?: boolean;
+  /** Solo visible para el perfil administrador. */
+  soloAdmin?: boolean;
 }
 
 export interface MenuSeccion {
@@ -42,7 +44,10 @@ export const MENU: MenuSeccion[] = [
     ],
   },
   {
-    titulo: 'Configuración',
-    items: [{ etiqueta: 'Google Drive', icono: 'cloud', ruta: '/configuracion/drive' }],
+    titulo: 'Administración',
+    items: [
+      { etiqueta: 'Google Drive', icono: 'cloud', ruta: '/configuracion/drive', soloAdmin: true },
+      { etiqueta: 'Auditoría', icono: 'shield', ruta: '/auditoria', soloAdmin: true },
+    ],
   },
 ];

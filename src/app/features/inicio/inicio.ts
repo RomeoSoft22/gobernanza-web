@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { forkJoin, map, switchMap } from 'rxjs';
+import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
+import { AccesoService } from '../../core/acceso.service';
+import { Resumen } from '../../core/models/sesion.model';
 import { SesionesService } from '../../core/services/sesiones.service';
 import { Icon } from '../../shared/icon/icon';
 import { FechaLargaPipe } from '../../shared/pipes';
@@ -33,16 +35,20 @@ import { FechaLargaPipe } from '../../shared/pipes';
           <div class="cuerpo">
             <h2>{{ m.tipo.nombre }}</h2>
             <p>@if (m.tipo.periodicidad) { Reunión {{ m.tipo.periodicidad }} · }{{ m.tipo.base_legal }}</p>
-            <div class="datos">
-              <span><strong>{{ m.resumen.por_clase.ordinaria ?? 0 }}</strong> ordinarias</span>
-              <span><strong>{{ m.resumen.por_clase.extraordinaria ?? 0 }}</strong> extraordinarias</span>
-              @if (m.resumen.ultima; as u) {
-                <span>Última: <strong>N° {{ u.numero }}</strong> ({{ u.fecha | fechaLarga: false }})</span>
-              }
-              @if (m.resumen.realizadas_sin_acta) {
-                <span class="alerta"><app-icon name="alert" [size]="14" /> {{ m.resumen.realizadas_sin_acta }} sin acta</span>
-              }
-            </div>
+            @if (m.resumen; as r) {
+              <div class="datos">
+                <span><strong>{{ r.por_clase.ordinaria ?? 0 }}</strong> ordinarias</span>
+                <span><strong>{{ r.por_clase.extraordinaria ?? 0 }}</strong> extraordinarias</span>
+                @if (r.ultima; as u) {
+                  <span>Última: <strong>N° {{ u.numero }}</strong> ({{ u.fecha | fechaLarga: false }})</span>
+                }
+                @if (r.realizadas_sin_acta) {
+                  <span class="alerta"><app-icon name="alert" [size]="14" /> {{ r.realizadas_sin_acta }} sin acta</span>
+                }
+              </div>
+            } @else {
+              <div class="datos"><span>Ver sesiones</span></div>
+            }
           </div>
           <app-icon name="chevron" class="ir" />
         </a>
@@ -81,10 +87,18 @@ import { FechaLargaPipe } from '../../shared/pipes';
 export class Inicio {
   private api = inject(SesionesService);
 
-  protected drive = toSignal(this.api.estadoDrive());
+  /** El estado de Drive solo lo consulta el administrador (los demás perfiles no tienen acceso). */
+  protected drive = toSignal(
+    inject(AccesoService).esAdmin() ? this.api.estadoDrive().pipe(catchError(() => of(null))) : of(null),
+  );
   protected modulos = toSignal(
     this.api.tiposReunion().pipe(
-      switchMap(tipos => forkJoin(tipos.map(t => this.api.resumen({ tipo_reunion_id: t.id }).pipe(map(resumen => ({ tipo: t, resumen })))))),
+      // Cada reunión se muestra aunque su resumen falle (la tarjeta aparece sin cifras).
+      switchMap(tipos => forkJoin(tipos.map(t => this.api.resumen({ tipo_reunion_id: t.id }).pipe(
+        map(resumen => ({ tipo: t, resumen: resumen as Resumen | null })),
+        catchError(() => of({ tipo: t, resumen: null as Resumen | null })),
+      )))),
+      catchError(() => of([])),
     ),
     { initialValue: [] },
   );

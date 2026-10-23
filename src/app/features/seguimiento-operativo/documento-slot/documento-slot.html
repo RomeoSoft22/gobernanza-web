@@ -22,6 +22,7 @@
       <span class="ext" [attr.data-clase]="fmt.clase" aria-hidden="true">{{ fmt.etiqueta }}</span>
 
       <a class="nombre" [href]="urlVer(d)" target="_blank" rel="noopener" [title]="d.nombre_original">{{ d.nombre_original }}</a>
+      @if (d.registrado_por) { <span class="por" [title]="'Registrado por ' + d.registrado_por">por {{ d.registrado_por }}</span> }
 
       <div class="pie-archivo">
         <span class="meta">
